@@ -7,6 +7,8 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "BootloaderMega8", "Bootload
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "BlankFirmware", "BlankFirmware\BlankFirmware.cproj", "{02D7A932-8836-4BB9-B249-6434F9874548}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "GpioPortMega8", "GpioPortMega8\GpioPortMega8.cproj", "{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -21,6 +23,10 @@ Global
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Debug|AVR.Build.0 = Debug|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Release|AVR.ActiveCfg = Release|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Release|AVR.Build.0 = Release|AVR
+		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Debug|AVR.ActiveCfg = Debug|AVR
+		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Debug|AVR.Build.0 = Debug|AVR
+		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Release|AVR.ActiveCfg = Release|AVR
+		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
