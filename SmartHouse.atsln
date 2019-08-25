@@ -3,11 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Atmel Studio Solution File, Format Version 11.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "BootloaderMega8", "BootloaderMega8\BootloaderMega8.cproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
-EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "BlankFirmware", "BlankFirmware\BlankFirmware.cproj", "{02D7A932-8836-4BB9-B249-6434F9874548}"
 EndProject
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "GpioPortMega8", "GpioPortMega8\GpioPortMega8.cproj", "{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}"
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "ClunetLib", "ClunetLib\ClunetLib.cproj", "{E7884F55-69DF-4029-BE85-0FF7788D34ED}"
+EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "ClunetExample", "ClunetExample\ClunetExample.cproj", "{B6A826A6-06BE-4620-9950-7367A826443C}"
+EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Gpioport", "Gpioport\Gpioport.cproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
+EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "GpioportExample", "GpioportExample\GpioportExample.cproj", "{91AE7672-8C48-4D50-83E0-02D20B400040}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,18 +19,26 @@ Global
 		Release|AVR = Release|AVR
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.ActiveCfg = Debug|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.Build.0 = Debug|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.ActiveCfg = Release|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.Build.0 = Release|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Debug|AVR.ActiveCfg = Debug|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Debug|AVR.Build.0 = Debug|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Release|AVR.ActiveCfg = Release|AVR
 		{02D7A932-8836-4BB9-B249-6434F9874548}.Release|AVR.Build.0 = Release|AVR
-		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Debug|AVR.ActiveCfg = Debug|AVR
-		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Debug|AVR.Build.0 = Debug|AVR
-		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Release|AVR.ActiveCfg = Release|AVR
-		{C453FE46-781C-4DB3-8D03-2D7A0D84BDBE}.Release|AVR.Build.0 = Release|AVR
+		{E7884F55-69DF-4029-BE85-0FF7788D34ED}.Debug|AVR.ActiveCfg = Debug|AVR
+		{E7884F55-69DF-4029-BE85-0FF7788D34ED}.Debug|AVR.Build.0 = Debug|AVR
+		{E7884F55-69DF-4029-BE85-0FF7788D34ED}.Release|AVR.ActiveCfg = Release|AVR
+		{E7884F55-69DF-4029-BE85-0FF7788D34ED}.Release|AVR.Build.0 = Release|AVR
+		{B6A826A6-06BE-4620-9950-7367A826443C}.Debug|AVR.ActiveCfg = Debug|AVR
+		{B6A826A6-06BE-4620-9950-7367A826443C}.Debug|AVR.Build.0 = Debug|AVR
+		{B6A826A6-06BE-4620-9950-7367A826443C}.Release|AVR.ActiveCfg = Release|AVR
+		{B6A826A6-06BE-4620-9950-7367A826443C}.Release|AVR.Build.0 = Release|AVR
+		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.ActiveCfg = Debug|AVR
+		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.Build.0 = Debug|AVR
+		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.ActiveCfg = Release|AVR
+		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.Build.0 = Release|AVR
+		{91AE7672-8C48-4D50-83E0-02D20B400040}.Debug|AVR.ActiveCfg = Debug|AVR
+		{91AE7672-8C48-4D50-83E0-02D20B400040}.Debug|AVR.Build.0 = Debug|AVR
+		{91AE7672-8C48-4D50-83E0-02D20B400040}.Release|AVR.ActiveCfg = Release|AVR
+		{91AE7672-8C48-4D50-83E0-02D20B400040}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

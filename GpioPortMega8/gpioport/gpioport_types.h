@@ -29,15 +29,31 @@ typedef struct gpio_frame_struct
 } gpio_frame;
 
 
-typedef void (*result_callback)(gpio_frame* frame); 
+typedef void (*result_callback_t)(gpio_frame* frame); 
+typedef void (*timeout_action_t)(void);
 
+typedef struct gpioport_timer_struct
+{
+	unsigned long nseconds_init;
+	unsigned long nseconds_left;
+	unsigned long nseconds_pertick;
+	timeout_action_t action;
+}gpioport_timer;
+
+enum gpioport_state_t
+{
+	IDLE, SENDING_HIGH, SENDING_LOW, SENDING_LAST, RECEIVING	
+};
 
 typedef struct gpioport_struct 
 {
 	int index_byte;
 	int index_bit;
 
-	result_callback callback;
+	gpioport_timer timeout_timer;
+	enum gpioport_state_t state;
+	
+	result_callback_t callback;
 	byte data_buffer[sizeof(gpio_frame)];	
 } gpioport;
 

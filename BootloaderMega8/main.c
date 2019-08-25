@@ -14,11 +14,10 @@
 #define F_CPU 1000000
 #include <util/delay.h>
 
-/*#include "../GpioPortMega8/gpioport/gpioport_mega8.h"
+#include "../GpioPortMega8/gpioport/gpioport_mega8.h"
 #include "../GpioPortMega8/gpioport/gpioport_comm.h"
 #include "../GpioPortMega8/gpioport/gpioport_types.h"
-#include "../GpioPortMega8/gpioport/gpioport_errs.h"*/
-#include "../GpioPortMega8/gpioport/gpioport.h"
+#include "../GpioPortMega8/gpioport/gpioport_errs.h"
 
 #define BOOTLOADER_LED_DIR	DDRD
 #define BOOTLOADER_LED_PRT	PORTD
@@ -37,7 +36,7 @@ void boot_program_page (uint32_t page, uint8_t *buf)
 	// Disable interrupts.
 
 	sreg = SREG;
-	cli();
+	cli();	
 	
 	eeprom_busy_wait ();
 
@@ -72,16 +71,51 @@ ISR(INT0_vect)
 	gpioport_int_handler();
 }
 
+ISR(TIMER1_OVF_vect)
+{
+	BOOTLOADER_LED_PRT |= (1 << BOOTLOADER_LED_PIN);
+	TCNT1 = 976;
+	gpioport_timer_handler();
+}
+
 void gpioport_callback(gpio_frame* frame)
 {
+	gpio_frame copy;
+	copy.id_src = frame->id_dst;
+	copy.id_dst = frame->id_src;
+	copy.cmd = 'X';
+	for(int i = 0; i < GPIO_FRAME_DATA_SIZE; i++)
+	{
+		copy.data[i] = frame->data[i];
+	}
+	copy.crc = frame->crc;
 	
+	gpioport_send(&copy);
 }
 
 int main(void)
-{			
-	gpioport_setup(gpioport_callback);
+{
+	//BOOTLOADER_LED_PRT |= (1 << BOOTLOADER_LED_PIN);
+	gpioport gport;
+	gpioport_begin(&gport, gpioport_callback);
+	//gpioport_setup(gpioport_callback);
 	
-	_delay_ms(3000);
+	//BOOTLOADER_LED_PRT |= (1 << BOOTLOADER_LED_PIN);
+	
+	_delay_ms(3000);	
+	
+	// Setup timer
+	TCCR1A = 0x00;
+	TCCR1B = (1 << CS10) | (1 << CS12);	
+	TCNT1 = 976;
+	TIMSK = (1 << TOIE1);
+	
+	//gpioport_send(&gport.);
+	
+	while(1)
+	{
+		
+	}
 	    
 	asm
 	(
