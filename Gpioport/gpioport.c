@@ -10,15 +10,27 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-static int pos_bit;
-static int pos_byte;
+#define TIMER_CUSTOM_PRESCALER 0
+
+typedef enum state_enum
+{
+	IDLE, RECEIVING, SENDING
+} state_t;
+
 
 static uint8_t output_frame_buffer[sizeof(gpio_frame_t)];
 static uint8_t input_frame_buffer[sizeof(gpio_frame_t)];
 
+static int pos_bit;
+static int pos_byte;
+static gpio_callback_t recieve_callback;
+static state_t state;
+
+
+
 void gpioport_set_callback(gpio_callback_t callback)
 {
-
+	recieve_callback = callback;
 }
 
 void set_int0(int enabled)
@@ -30,6 +42,18 @@ void set_int0(int enabled)
 	else
 	{
 		GICR &= (1 << INT0);
+	}
+}
+
+void set_int1(int enabled)
+{
+	if(enabled)
+	{
+		GICR |= (1 << INT1);
+	}
+	else
+	{
+		GICR &= (1 << INT1);
 	}
 }
 
@@ -56,7 +80,7 @@ void gpioport_init()
 	
 	
 	// Enabling INT0 on falling edge
-	MCUSR = (1 << ISC01);	
+	MCUSR = (1 << ISC01)	
 	set_int0(1);
 }
 
@@ -73,12 +97,14 @@ void gpioport_send(uint8_t dst, uint8_t cmd, uint8_t data[GPIO_FRAME_DATA_SIZE])
 
 
 
-ISR(TIMER0_OVF_vect)
+ISR(TIMER0_OVF_vect)	// Timer interrupt
 {
+	TCNT0 = TIMER_CUSTOM_PRESCALER;
+	
 	
 }
 
-ISR(INT0_vect)
+ISR(INT0_vect)			// SCL interrupt
 {
 	
 }
