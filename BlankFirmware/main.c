@@ -72,6 +72,17 @@ void enter_powerdown_mode()
 	sei();
 }
 
+void enter_idle_mode()
+{
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	cli();
+	sleep_enable();
+	sei();
+	sleep_cpu();
+	sleep_disable();
+	sei();
+}
+
 void enable_power_reduction()
 {
 	ADCSRA &= ~(ADEN);	// Turning off ADC
@@ -89,7 +100,9 @@ void received_handler(char ch)
 {
 	if(ch == 'S')
 	{
-		enter_powerdown_mode();
+		ULink_send_info("Entering sleep mode...\n");
+		enter_idle_mode();	
+		ULink_send_info("Waking up from sleep mode...\n");	
 	}
 }
 
