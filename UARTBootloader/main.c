@@ -18,8 +18,6 @@
 #include <avr/wdt.h>
 
 #define PAGE_SIZE_BYTES SPM_PAGESIZE
-#define TIME_LEFT_TICKS_INITIAL F_CPU / 4
-#define TIME_LEFT_SECS_INITIAL 5
 
 uint32_t prog_page_address = 0;
 
@@ -101,13 +99,14 @@ void UART_send_info(char* message)
 char UART_receive()
 {
 	while ( !(UCSR0A & (1<<RXC0)) );
-	
+	wdt_reset();
 	return UDR0;
 }
 
 void prog_handler()
 {
 	//UART_send_command(ACK"\n");
+	uint8_t sreg_tmp = SREG;
 	cli();
 	
 	TCCR0B &= ~(1 << CS02) & ~(1 << CS01) & ~(1 << CS00); // Stop timer
@@ -116,7 +115,7 @@ void prog_handler()
 	
 	for (uint16_t i = 0; i < PAGE_SIZE_BYTES; i++)
 	{
-		A[i] = UART_receive();		
+		A[i] = UART_receive();				
 	}
 	
 	
@@ -125,7 +124,7 @@ void prog_handler()
 	
 	UART_send_command(ACK"\n");
 	
-	sei();
+	SREG = sreg_tmp;
 }
 
 void resolveUartCommand(char ch)
@@ -162,14 +161,31 @@ void resolveUartCommand(char ch)
 	}
 }
 
+ISR(WDT_vect)
+{
+	asm("jmp 0");
+}
+
 int main(void)
 {	
+	// Setting position of reset vectors table
+	MCUSR |= (1 << IVCE);
+	MCUSR |= (1 << IVSEL);
+	
+	// Disabling WDT from resetting the system
 	MCUSR = 0;
 	wdt_disable();
 	
-	uint32_t time_left_ticks =  TIME_LEFT_TICKS_INITIAL;
-	uint8_t time_left_seconds = TIME_LEFT_SECS_INITIAL;
+	// Using WDT as 2.0 seconds timer causing interrupt
 	
+	cli();
+	wdt_reset();
+	/* Start timed  sequence */
+	WDTCSR = ((1<<WDCE) | (1<<WDE));
+	/* Set new prescaler(time-out) value = 64K cycles (~0.5 s) */
+	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+	sei();
+
 	UART_init();
 
 	DDRC |= (1 << 5);
@@ -177,28 +193,11 @@ int main(void)
 	PORTC |= (1 << 5);
 
 	while(1)
-	{		
-		//char ch = UART_receive();
-		if ( !(UCSR0A & (1<<RXC0)) )
-		{
-			time_left_ticks--;
-			if(time_left_ticks <= 0)
-			{
-				time_left_ticks = TIME_LEFT_TICKS_INITIAL;
-				time_left_seconds--;
-				if(time_left_seconds <= 0)
-				{
-					asm("jmp 0");
-				}
-			}
-			
-			continue;
-		}
+	{	
+		char ch = UART_receive();
 		
-		time_left_ticks = TIME_LEFT_TICKS_INITIAL;
-		time_left_seconds = TIME_LEFT_SECS_INITIAL;		
-		
-		char ch = UDR0;
+		// Communication in progress
+		wdt_reset();
 		
 		if(PORTC & (1 << 5))
 		{
