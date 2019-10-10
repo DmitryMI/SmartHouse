@@ -114,12 +114,6 @@ int main(void)
 	
 	enable_power_reduction();
 	
-	LED_DDR |= (1 << LED_PIN);
-	LED_PORT |= (1 << LED_PIN);
-	_delay_ms(1000);
-	LED_PORT &= ~(1 << LED_PIN);
-	
-	//turn_power(1);
 	ULink_set_received_handler(received_handler);
 	ULink_set_reset_request_handler(reset_handler);
 	ULink_init();	
