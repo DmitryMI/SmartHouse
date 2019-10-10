@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <util/delay.h>
 #include <avr/wdt.h>
+#include <avr/sleep.h>
+#include <avr/interrupt.h>
 
 #include "UartLink.h"
 
@@ -45,8 +47,7 @@ void turn_power(int on)
 	{
 		RELAY_PORT &= ~(1 << RELAY_PIN);
 	}
-	
-	//_delay_ms(400);
+
 }
 
 void reset_handler()
@@ -60,11 +61,45 @@ void reset_handler()
 	} while(0);
 }
 
+void enter_powerdown_mode()
+{
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	cli();
+	sleep_enable();
+	sei();
+	sleep_cpu();
+	sleep_disable();
+	sei();
+}
+
+void enable_power_reduction()
+{
+	ADCSRA &= ~(ADEN);	// Turning off ADC
+	
+	PRR = 
+	(1 << PRTWI)	|	// Disabling IIC
+	(1 << PRTIM2)	|	// Disabling Timer2
+	(1 << PRTIM0)	|	// Disabling Timer0
+	(1 << PRTIM1)	|	// Disabling Timer1
+	(1 << PRSPI)	|	// Disabling SPI
+	(1 << PRADC);		// Disabling ADC
+}
+
+void received_handler(char ch)
+{
+	if(ch == 'S')
+	{
+		enter_powerdown_mode();
+	}
+}
+
 
 int main(void)
 {
 	MCUSR = 0;
 	wdt_disable();
+	
+	enable_power_reduction();
 	
 	LED_DDR |= (1 << LED_PIN);
 	LED_PORT |= (1 << LED_PIN);
@@ -72,7 +107,7 @@ int main(void)
 	LED_PORT &= ~(1 << LED_PIN);
 	
 	//turn_power(1);
-	
+	ULink_set_received_handler(received_handler);
 	ULink_set_reset_request_handler(reset_handler);
 	ULink_init();	
 		

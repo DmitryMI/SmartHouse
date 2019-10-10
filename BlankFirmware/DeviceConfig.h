@@ -11,7 +11,7 @@
 
 
 #define DEV_NAME	"Atmega328P Blinker"
-#define FIRM_VERS	"1.0.0"
+#define FIRM_VERS	"1.1.0"
 
 #define ACK			"ACK_FIRMWARE"
 

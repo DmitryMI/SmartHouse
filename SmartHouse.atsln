@@ -25,8 +25,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Bootloaders", "_Bootloader
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "UARTBootloader", "UARTBootloader\UARTBootloader.cproj", "{8F94D1BE-D943-46BA-BCF8-93F78DC7BB40}"
 EndProject
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "UARTLink", "UARTLink\UARTLink.cproj", "{34555D08-E28F-40C5-9871-CA971729ED56}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -61,10 +59,6 @@ Global
 		{8F94D1BE-D943-46BA-BCF8-93F78DC7BB40}.Debug|AVR.Build.0 = Debug|AVR
 		{8F94D1BE-D943-46BA-BCF8-93F78DC7BB40}.Release|AVR.ActiveCfg = Release|AVR
 		{8F94D1BE-D943-46BA-BCF8-93F78DC7BB40}.Release|AVR.Build.0 = Release|AVR
-		{34555D08-E28F-40C5-9871-CA971729ED56}.Debug|AVR.ActiveCfg = Debug|AVR
-		{34555D08-E28F-40C5-9871-CA971729ED56}.Debug|AVR.Build.0 = Debug|AVR
-		{34555D08-E28F-40C5-9871-CA971729ED56}.Release|AVR.ActiveCfg = Release|AVR
-		{34555D08-E28F-40C5-9871-CA971729ED56}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

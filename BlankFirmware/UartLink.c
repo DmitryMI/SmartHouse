@@ -22,10 +22,16 @@
 
 request_t reset_request_handler = NULL;
 request_t prog_request_handler = NULL;
+received_callback_t ulink_received_handler = NULL;
 
 void ULink_set_reset_request_handler(request_t handler)
 {
 	reset_request_handler = handler;
+}
+
+void ULink_set_received_handler(received_callback_t handler)
+{
+	ulink_received_handler = handler;
 }
 
 void ULink_set_prog_request_handler(request_t handler)
@@ -86,31 +92,35 @@ void resolveUartCommand(char ch)
 	if(ch == 'N')
 	{
 		ULink_send_command(DEV_NAME"\n");
-	}
-	
-	if(ch == 'A')
+	}	
+	else if(ch == 'A')
 	{
 		ULink_send_command(ACK"\n");
 	}
 	
-	if(ch == 'V')
+	else if(ch == 'V')
 	{
 		ULink_send_command(FIRM_VERS"\n");
 	}
-
-	if (ch == 'R')
+	else if (ch == 'R')
 	{
 		if(reset_request_handler != NULL)
 		{
 			reset_request_handler();
 		}		
-	}
-	
-	if(ch == 'P')
+	}	
+	else if(ch == 'P')
 	{
 		if(prog_request_handler != NULL)
 		{
 			prog_request_handler();
+		}
+	}
+	else
+	{
+		if(ulink_received_handler != NULL)
+		{
+			ulink_received_handler(ch);
 		}
 	}
 }
