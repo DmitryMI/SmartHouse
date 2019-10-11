@@ -123,8 +123,10 @@ int main(void)
 	while (1)
 	{
 		tickCounter++;
-		LED_PORT |= (1 << LED_PIN);
-		//turn_power(1);
+		//LED_PORT |= (1 << LED_PIN);
+		
+		asm("SBI 8, 5");
+
 		_delay_ms(500);
 		LED_PORT &= ~(1 << LED_PIN);
 		turn_power(0);
