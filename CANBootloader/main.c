@@ -284,10 +284,13 @@ void inline load_tx()
 }
 
 
-/*ISR(INT0_vect)
+ISR(INT0_vect)
 {	
-	
-}*/
+	/*EIMSK &= ~(1 << INT0);
+	DDRB |= (1 << PB1);
+	PORTB |= (1 << PB1);*/
+	load_tx();
+}
 
 void inline can_init()
 {
@@ -299,16 +302,16 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	/*DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
 	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
-	sei();*/
+	sei();
 	
 	// Configuring interrupt on CAN-controller
-	/*uint8_t caninte;
+	uint8_t caninte;
 	can_read(CAN_REG_CANINTE, &caninte, 1);
 	caninte |= CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte, 1);*/
+	can_write(CAN_REG_CANINTE, &caninte, 1);
 	
 	// Set normal operation mode
 	uint8_t canctrl;
@@ -365,13 +368,7 @@ int main(void)
 	
     while (1) 
     {
-		uint8_t status = can_read_status();
-		if(status & (1 << 0))
-		{
-			load_tx();
-		}
 		
-		//_delay_ms(100);
     }
 }
 

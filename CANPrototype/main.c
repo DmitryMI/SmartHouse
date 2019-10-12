@@ -140,9 +140,9 @@ void uart_log(char* message)
 void do_blink()
 {
 	LED_PORT |= (1 << LED_PIN);
-	_delay_ms(200);
+	_delay_ms(1000);
 	LED_PORT &= ~(1 << LED_PIN);
-	_delay_ms(200);
+	_delay_ms(1000);
 }
 
 void enable_power_reduction()

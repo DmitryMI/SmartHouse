@@ -12,7 +12,7 @@
 #endif
 
 
-#define BAUD 38400
+#define BAUD 9600
 
 #include <avr/wdt.h>
 #include <avr/io.h>
