@@ -29,6 +29,8 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "CANPrototype", "CANPrototyp
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "CANBootloader", "CANBootloader\CANBootloader.cproj", "{6612EB67-6867-4081-AAA6-19A1B16EE966}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "CANBridge", "CANBridge\CANBridge.cproj", "{D5289064-DFAA-425D-8F07-C18248039553}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -71,6 +73,10 @@ Global
 		{6612EB67-6867-4081-AAA6-19A1B16EE966}.Debug|AVR.Build.0 = Debug|AVR
 		{6612EB67-6867-4081-AAA6-19A1B16EE966}.Release|AVR.ActiveCfg = Release|AVR
 		{6612EB67-6867-4081-AAA6-19A1B16EE966}.Release|AVR.Build.0 = Release|AVR
+		{D5289064-DFAA-425D-8F07-C18248039553}.Debug|AVR.ActiveCfg = Debug|AVR
+		{D5289064-DFAA-425D-8F07-C18248039553}.Debug|AVR.Build.0 = Debug|AVR
+		{D5289064-DFAA-425D-8F07-C18248039553}.Release|AVR.ActiveCfg = Release|AVR
+		{D5289064-DFAA-425D-8F07-C18248039553}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

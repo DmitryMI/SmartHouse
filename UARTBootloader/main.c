@@ -167,8 +167,8 @@ ISR(WDT_vect)
 int main(void)
 {	
 	// Setting position of reset vectors table
-	MCUSR |= (1 << IVCE);
-	MCUSR |= (1 << IVSEL);
+	MCUCR |= (1 << IVCE);
+	MCUCR |= (1 << IVSEL);
 	
 	// Disabling WDT from resetting the system
 	MCUSR = 0;

@@ -28,11 +28,6 @@ void can_reset_controller()
 {
 	uint8_t cmd = (1 << 7) | (1 << 6);
 	
-	if(log_handler != NULL)
-	{
-		log_handler("Sending RESET intruction...\n");
-	}
-	
 	// Pulling CS low
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	

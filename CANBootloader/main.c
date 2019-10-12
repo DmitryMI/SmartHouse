@@ -35,7 +35,7 @@
 
 #ifndef CAN_SID
 # warning "CAN_SID must be defined and unique"
-#define CAN_SID 1UL
+#define CAN_SID 0x7FE
 #endif
 // ******************
 
@@ -45,6 +45,8 @@
 #define CAN_REG_CANCTRL			0xF
 #define CAN_OPMODE_RESET		(~(1 << 7) & ~(1 << 6) & ~(1 << 5))
 #define CAN_OPMODE_NORMAL		0
+
+#define CAN_RTS_TXB0	(1 << 0)
 
 #define PAGE_SIZE_BYTES SPM_PAGESIZE
 
@@ -131,35 +133,6 @@ void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-void inline can_init()
-{
-	// Initializaing SPI
-	SPI_DDR = (1 << SPI_MOSI) | (1 << SPI_SCK) | (1 << SPI_CS_MCU) | (1 << SPI_CS_CAN);
-	SPI_PORT |= (1 << SPI_CS_CAN);	
-	SPCR = (1 << SPE) | (1 << MSTR) | (1 << SPR0) | (1 << SPR1);	
-
-	can_reset_controller();	
-	
-	// Configuring interrupt on MCU
-	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
-	EIMSK |= (1 << INT0);						// Enabling INT0
-	sei();
-	
-	// Configuring interrupt on CAN-controller
-	uint8_t caninte;
-	can_read(CAN_REG_CANINTE, &caninte, 1);
-	caninte |= CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte, 1);	
-	
-	// Set normal operation mode
-	uint8_t canctrl;
-	can_read(CAN_REG_CANCTRL, &canctrl, 1);
-	canctrl &= CAN_OPMODE_RESET;
-	canctrl |= CAN_OPMODE_NORMAL;
-	can_write(CAN_REG_CANCTRL, &canctrl, 1);
-}
-
 int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 {
 	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1001 0nn0
@@ -227,23 +200,38 @@ void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-ISR(INT0_vect)
+void inline can_rts(uint8_t txb_mask)
 {
+	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
+
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	SPDR = cmd;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
+
+void inline load_tx()
+{
+	LED_PORT &= ~(1 << LED_PIN);
+	
 	// CAN-data received
-	wdt_reset();	
+	wdt_reset();
 	
 	// Reading data from CAN-controller
-	const int package_length = 13;	
+	const int package_length = 13;
 	uint8_t package[package_length];
-	can_readrxb(0, package, package_length);	
+	can_readrxb(0, package, package_length);
 	uint16_t sid = 0;
 	sid += package[0];
 	sid = sid << 3;
-	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;	
-	//uint8_t dlc = package[4];	
+	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
+	//uint8_t dlc = package[4];
 	
 	uint8_t addrh = package[CAN_OFFSET_ADDRH];
-	uint8_t addrl = package[CAN_OFFSET_ADDRL];	
+	uint8_t addrl = package[CAN_OFFSET_ADDRL];
 	uint16_t addr = addrh;
 	addr = addr << 8;
 	addr += addrl;
@@ -258,14 +246,15 @@ ISR(INT0_vect)
 	
 	//uint8_t *data = package + CAN_OFFSET_DATA;
 	
-	uint8_t response[8];	
+	uint8_t response[8] = {0};
+	
 	response[CAN_OFFSET_ADDRH - CAN_PAYLOAD_OFFSET] = sid >> 8;
 	response[CAN_OFFSET_ADDRL - CAN_PAYLOAD_OFFSET] = sid;
 	
 	if(comdh == CAN_CMD_WHOIS)
-	{		
+	{
 		response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
-		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = BOOT_VERS;		
+		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = BOOT_VERS;
 	}
 	else if(comdh == CAN_CMD_PROG_INFOR)
 	{
@@ -274,6 +263,7 @@ ISR(INT0_vect)
 		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
 		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
 		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
+		
 	}
 	else if(comdh == CAN_CMD_PROG_FLASH)
 	{
@@ -281,22 +271,80 @@ ISR(INT0_vect)
 		program_handle(package + CAN_OFFSET_DATA);
 		
 		response[CAN_OFFSET_COMDH  - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
-		response[CAN_OFFSET_COMDL  - CAN_PAYLOAD_OFFSET] = 0;		
+		response[CAN_OFFSET_COMDL  - CAN_PAYLOAD_OFFSET] = 0;
+
 	}
 	else
 	{
 		response[CAN_OFFSET_COMDH  - CAN_PAYLOAD_OFFSET] = CAN_CMD_UNSUPPORTED;
 	}
 	
-	can_load_tx0_buffer(sid, response, 8);
+	can_load_tx0_buffer(CAN_SID, response, 8);
+	can_rts(CAN_RTS_TXB0);
+}
+
+
+/*ISR(INT0_vect)
+{	
+	
+}*/
+
+void inline can_init()
+{
+	// Initializaing SPI
+	SPI_DDR = (1 << SPI_MOSI) | (1 << SPI_SCK) | (1 << SPI_CS_MCU) | (1 << SPI_CS_CAN);
+	SPI_PORT |= (1 << SPI_CS_CAN);
+	SPCR = (1 << SPE) | (1 << MSTR) | (1 << SPR0);
+
+	can_reset_controller();
+	
+	// Configuring interrupt on MCU
+	/*DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	EIMSK |= (1 << INT0);						// Enabling INT0
+	sei();*/
+	
+	// Configuring interrupt on CAN-controller
+	/*uint8_t caninte;
+	can_read(CAN_REG_CANINTE, &caninte, 1);
+	caninte |= CAN_INT_RX0IE;
+	can_write(CAN_REG_CANINTE, &caninte, 1);*/
+	
+	// Set normal operation mode
+	uint8_t canctrl;
+	can_read(CAN_REG_CANCTRL, &canctrl, 1);
+	canctrl &= CAN_OPMODE_RESET;
+	canctrl |= CAN_OPMODE_NORMAL;
+	can_write(CAN_REG_CANCTRL, &canctrl, 1);
+}
+
+uint8_t inline can_read_status()
+{
+	uint8_t cmd = (1 << 7) | (1 << 5);		// 1010 0000
+	uint8_t status;
+
+	// Pulling CS low
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	SPDR = cmd;
+	while(!(SPSR & (1 << SPIF)));
+	
+	SPDR = 0xFF;
+	while(!(SPSR & (1 << SPIF)));
+	status = SPDR;
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+	
+	return status;
 }
 
 
 int main(void)
 {
 	// Setting position of reset vectors table
-	MCUSR |= (1 << IVCE);
-	MCUSR |= (1 << IVSEL);
+	MCUCR = (1 << IVCE);
+	MCUCR = (1 << IVSEL);
 	
 	// Disabling WDT from resetting the system
 	MCUSR = 0;
@@ -317,6 +365,13 @@ int main(void)
 	
     while (1) 
     {
+		uint8_t status = can_read_status();
+		if(status & (1 << 0))
+		{
+			load_tx();
+		}
+		
+		//_delay_ms(100);
     }
 }
 
