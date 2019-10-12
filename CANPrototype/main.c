@@ -76,6 +76,17 @@ void received_handler(char ch)
 		}
 		UDR0 = '\n';		
 	}
+	else if('F')
+	{
+		ULink_send_info("Testing CAN message sending and receiving\n");
+		
+		uint8_t data[8] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+		
+		can_fill_tx0_write(1, data, 8);
+		can_rts(CAN_RTS_TXB0);
+		
+		ULink_send_info("TX initiated. Wait for interrupt!\n");
+	}
 }
 
 void uart_log(char* message)
@@ -134,7 +145,7 @@ int main(void)
 	
 	// Can initialization
 	can_set_logger(uart_log);
-	can_init(CAN_INT_EN);
+	can_init(CAN_MCU_INT_EN);
 	
 	// Set loopback mode
 	set_loopback_mode();

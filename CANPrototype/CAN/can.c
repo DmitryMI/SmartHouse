@@ -18,18 +18,6 @@ void can_set_logger(logger_t logger)
 	log_handler = logger;
 }
 
-void _can_int0_handler()
-{
-	// Check if it is really a low-level INT0 interrupt
-	if(PIND & (1 << PD2))
-	{
-		if(log_handler != NULL)
-		{
-			log_handler("CAN interrupt appeared!");
-		}
-	}
-}
-
 void can_reset_controller()
 {
 	uint8_t cmd = (1 << 7) | (1 << 6);
@@ -123,6 +111,82 @@ void can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
+void can_fill_tx0_write(uint16_t sid, uint8_t *data, int data_length)
+{
+	// Filling SID
+	sid = sid << 5;
+	can_write(CAN_REG_TXB0SIDH, (uint8_t*)(&sid), 2);
+	
+	// Filling transmit buffer size
+	can_write(CAN_REG_TXB0DLC, (uint8_t*)(&data_length), 1);
+	
+	// Writing data
+	can_write(CAN_REG_TXB0D0, data, data_length);
+}
+
+void can_rts(uint8_t txb_mask)
+{
+	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
+
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	SPDR = cmd;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
+
+int can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
+{
+	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1000 0nnn
+
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	SPDR = cmd;
+	while(!(SPSR & (1 << SPIF)));
+	
+	for(int i = 0; i < data_length; i++)
+	{
+		SPDR = 0xFF;
+		while(!(SPSR & (1<<SPIF)));
+		data[i] = SPDR;
+	}
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+	
+	return data_length;
+}
+
+void _can_int0_handler()
+{
+	// Check if it is really a low-level INT0 interrupt
+	if(!(PIND & (1 << PD2)))
+	{
+		if(log_handler != NULL)
+		{
+			log_handler("CAN interrupt appeared!");
+		}
+		
+		char data[9];
+		can_readrxb((1 << 1), data, 8);
+		
+		for(int i = 0; i < 8; i++)
+		{
+			data[i] += 48;
+		}
+		
+		data[8] = '\0';
+		
+		if(log_handler != NULL)
+		{
+			log_handler("Data received!\n");
+			log_handler((char*)data);			
+		}
+	}
+}
+
 void can_init(uint8_t flags)
 {
 	// Initializaing SPI
@@ -138,7 +202,7 @@ void can_init(uint8_t flags)
 	// Specification recommends to reset controller after power-up
 	can_reset_controller();
 	
-	if(flags & CAN_INT_EN)
+	if(flags & CAN_MCU_INT_EN)
 	{
 		// Configuring interrupt on MCU
 		DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
@@ -147,6 +211,16 @@ void can_init(uint8_t flags)
 		sei();
 		
 		// Configuring interrupt on CAN-controller
-		// TODO
+		uint8_t caninte;
+		can_read(CAN_REG_CANINTE, &caninte, 1);
+		caninte |= CAN_INT_RX0IE;
+		can_write(CAN_REG_CANINTE, &caninte, 1);
 	}
+	
+	// Set normal operation mode
+	uint8_t canctrl;
+	can_read(CAN_REG_CANCTRL, &canctrl, 1);
+	canctrl &= CAN_OPMODE_RESET;
+	canctrl |= CAN_OPMODE_NORMAL;
+	can_write(CAN_REG_CANCTRL, &canctrl, 1);
 }
