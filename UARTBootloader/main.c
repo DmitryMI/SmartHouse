@@ -108,9 +108,7 @@ void prog_handler()
 	//UART_send_command(ACK"\n");
 	uint8_t sreg_tmp = SREG;
 	cli();
-	
-	TCCR0B &= ~(1 << CS02) & ~(1 << CS01) & ~(1 << CS00); // Stop timer
-	
+
 	unsigned char A[PAGE_SIZE_BYTES];	
 	
 	for (uint16_t i = 0; i < PAGE_SIZE_BYTES; i++)

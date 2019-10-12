@@ -12,10 +12,16 @@
 #include <stdlib.h>
 
 logger_t log_handler = NULL;
+can_received_callback_t can_callback = NULL;
 
 void can_set_logger(logger_t logger)
 {
 	log_handler = logger;
+}
+
+void can_set_callback(can_received_callback_t callback)
+{
+	can_callback = callback;
 }
 
 void can_reset_controller()
@@ -139,7 +145,7 @@ void can_rts(uint8_t txb_mask)
 
 int can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 {
-	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1000 0nnn
+	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1001 0nn0
 
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	
@@ -159,31 +165,72 @@ int can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 	return data_length;
 }
 
+void can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
+{
+	uint8_t cmd = (1 << 6);
+	
+	// Pulling CS low
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	// Sending LOAD TXB intstruction
+	SPDR = cmd;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Filling SID
+	sid = sid << 5;
+	
+	// Sid 11 - 3
+	SPDR = sid >> 8;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Sid 3 - 0
+	SPDR = sid;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Filling TXB0EID8
+	SPDR = 0xFF;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Filling TXB0EID0
+	SPDR = 0xFF;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Filling DLC
+	SPDR = data_length;
+	while(!(SPSR & (1 << SPIF)));
+	
+	// Sending bytes
+	for(int i = 0; i < data_length; i++)
+	{
+		SPDR = data[i];
+		while(!(SPSR & (1 << SPIF)));
+	}
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
+
 void _can_int0_handler()
 {
 	// Check if it is really a low-level INT0 interrupt
 	if(!(PIND & (1 << PD2)))
-	{
-		if(log_handler != NULL)
+	{	
+		const int package_length = 13;
+		
+		uint8_t package[package_length];
+		can_readrxb(0, package, package_length);				
+		
+		uint16_t sid = 0;
+		sid += package[0];
+		sid = sid << 3;
+		sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;		
+		
+		uint8_t dlc = package[4];		
+		
+		if(can_callback != NULL)
 		{
-			log_handler("CAN interrupt appeared!");
-		}
-		
-		char data[9];
-		can_readrxb((1 << 1), data, 8);
-		
-		for(int i = 0; i < 8; i++)
-		{
-			data[i] += 48;
-		}
-		
-		data[8] = '\0';
-		
-		if(log_handler != NULL)
-		{
-			log_handler("Data received!\n");
-			log_handler((char*)data);			
-		}
+			can_callback(sid, package, dlc);
+		}		
 	}
 }
 

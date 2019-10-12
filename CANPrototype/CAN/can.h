@@ -37,6 +37,9 @@
 
 // ******************
 
+
+#define CAN_PACKAGE_PAYLOAD_OFFSET 5
+
 #define CAN_RTS_TXB0	(1 << 0)
 #define CAN_RTS_TXB1	(1 << 1)
 #define CAN_RTS_TXB2	(1 << 2)
@@ -104,10 +107,11 @@
 
 typedef void (*logger_t)(char* message);
 
-
+typedef void (*can_received_callback_t)(uint16_t sid, uint8_t *data, uint8_t data_length);
 
 void can_init(uint8_t flags);
 void can_set_logger(logger_t logger);
+void can_set_callback(can_received_callback_t callback);
 void can_reset_controller();
 
 /* Call this function in INT0 ISR, if you are using CAN-interrupt */
@@ -119,6 +123,8 @@ int can_read(uint8_t reg_addr, uint8_t *data_buffer, int data_length);
 
 /* sid: standard frame ID. DON'T USE MSB-BITS 16-12!*/
 void can_fill_tx0_write(uint16_t sid, uint8_t *data, int data_length);
+
+void can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length);
 
 void can_rts(uint8_t txb_mask);
 int can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length);
