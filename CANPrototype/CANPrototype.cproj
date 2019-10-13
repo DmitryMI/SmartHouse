@@ -114,6 +114,9 @@
     <Compile Include="CAN\can.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="can_commands.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="DeviceConfig.h">
       <SubType>compile</SubType>
     </Compile>

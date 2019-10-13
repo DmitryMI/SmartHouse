@@ -16,15 +16,21 @@
 
 #include "UartLink.h"
 #include "CAN/can.h"
+#include "can_commands.h"
+
+#define CAN_FIRM_VERS		1
 
 #define LED_PORT		PORTC
 #define LED_PIN			PC5
 #define LED_DDR			DDRC
 
+#define CAN_SID			2046
+
 #define EOL() while(!(UCSR0A & (1 << UDRE0))); UDR0 = '\n';
 
 void reset_handler()
 {
+	cli();
 	do
 	{
 		wdt_enable(WDTO_500MS);
@@ -163,13 +169,71 @@ ISR(INT0_vect)
 	_can_int0_handler();
 }
 
-void set_loopback_mode()
-{
-	uint8_t canctrl;
-	can_read(CAN_REG_CANCTRL, &canctrl, 1);
-	canctrl &= CAN_OPMODE_RESET;
-	canctrl |= CAN_OPMODE_LOOPBACK;
-	can_write(CAN_REG_CANCTRL, &canctrl, 1);
+
+
+void inline can_resolve()
+{	
+	// Reading data from CAN-controller
+	const int package_length = 13;
+	uint8_t package[package_length];
+	can_readrxb(0, package, package_length);
+	uint16_t sid = 0;
+	sid += package[0];
+	sid = sid << 3;
+	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
+	//uint8_t dlc = package[4];
+	
+	uint8_t addrh = package[CAN_OFFSET_ADDRH];
+	uint8_t addrl = package[CAN_OFFSET_ADDRL];
+	uint16_t addr = addrh;
+	addr = addr << 8;
+	addr += addrl;
+	
+	if(addr != 0 && addr != CAN_SID)
+	{
+		return;
+	}
+	
+	uint8_t comdh = package[CAN_OFFSET_COMDH];
+	uint8_t comdl = package[CAN_OFFSET_COMDL];
+	
+	//uint8_t *data = package + CAN_OFFSET_DATA;
+	
+	uint8_t response[8] = {0};
+	
+	int mustRespond = 1;
+	
+	response[CAN_OFFSET_ADDRH - CAN_PAYLOAD_OFFSET] = sid >> 8;
+	response[CAN_OFFSET_ADDRL - CAN_PAYLOAD_OFFSET] = sid;
+	
+	if(comdh == CAN_CMD_WHOIS)
+	{
+		response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
+		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = CAN_FIRM_VERS;
+	}
+	else if(comdh == CAN_CMD_PROG_INFOR)
+	{
+		response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
+		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = SPM_PAGESIZE;
+		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
+		
+	}	
+	else if(comdh == CAN_CMD_RESET)
+	{
+		reset_handler();
+	}
+	else
+	{
+		response[CAN_OFFSET_COMDH  - CAN_PAYLOAD_OFFSET] = CAN_CMD_UNSUPPORTED;
+	}
+	
+	if(mustRespond)
+	{
+		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_rts(CAN_RTS_TXB0);
+	}
 }
 
 void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
