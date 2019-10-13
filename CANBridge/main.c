@@ -31,6 +31,8 @@
 uint8_t uart_package_buffer[CAN_PACKAGE_LEN];
 int uart_package_pos = 0;
 
+uint16_t device_sid = CAN_SID;
+
 void reset_handler()
 {
 	do
@@ -69,7 +71,20 @@ void uart_received_handler(char ch)
 {
 	uint8_t buffer[CAN_PACKAGE_LEN];
 	
-	if(ch == 'I')
+	if(ch == 'M')
+	{
+		UCSR0B &= ~(1 << RXCIE0);	// Disabling UART RX interrupt
+		
+		uint8_t sidh = ULink_receive();
+		uint8_t sidl = ULink_receive();
+		
+		device_sid = sidh;
+		device_sid = device_sid << 8;
+		device_sid = sidl;
+
+		UCSR0B |= (1 << RXCIE0);	// Enabling UART RX interrupt
+	}	
+	else if(ch == 'I')
 	{
 		UCSR0B &= ~(1 << RXCIE0);	// Disabling UART RX interrupt
 		
