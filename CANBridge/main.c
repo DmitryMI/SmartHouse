@@ -87,13 +87,25 @@ void uart_received_handler(char ch)
 	{
 		ULink_send_info("Can testing command received\n");
 		uint8_t status = can_read_status();
+		uint8_t caninte = 0;
+		can_read(CAN_REG_CANINTE, &caninte, 1);
 		
-		ULink_send_info("Status reading finished\n");
-		ULink_send_info("");
+		ULink_send_info("Status: ");		
 		print_binary(status);
 		while(!(UCSR0A & (1 << UDRE0)))
 		{
-			
+		}
+		UDR0 = '\n';
+		
+		ULink_send_info("CANINTE: ");
+		print_binary(caninte);
+		while(!(UCSR0A & (1 << UDRE0)))
+		{
+		}
+		UDR0 = '\n';
+		
+		while(!(UCSR0A & (1 << UDRE0)))
+		{		
 		}
 		UDR0 = '\n';
 		
