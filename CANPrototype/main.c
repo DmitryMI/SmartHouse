@@ -146,7 +146,7 @@ void uart_log(char* message)
 void do_blink()
 {
 	LED_PORT |= (1 << LED_PIN);
-	_delay_ms(1000);
+	_delay_ms(50);
 	LED_PORT &= ~(1 << LED_PIN);
 	_delay_ms(1000);
 }
@@ -171,17 +171,9 @@ ISR(INT0_vect)
 
 
 
-void inline can_resolve()
+void inline can_resolve(uint16_t sid, uint8_t *package)
 {	
-	// Reading data from CAN-controller
-	const int package_length = 13;
-	uint8_t package[package_length];
-	can_readrxb(0, package, package_length);
-	uint16_t sid = 0;
-	sid += package[0];
-	sid = sid << 3;
-	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
-	//uint8_t dlc = package[4];
+	
 	
 	uint8_t addrh = package[CAN_OFFSET_ADDRH];
 	uint8_t addrl = package[CAN_OFFSET_ADDRL];
@@ -215,7 +207,7 @@ void inline can_resolve()
 	{
 		response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
 		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = SPM_PAGESIZE;
+		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = 128;
 		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
 		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
 		
@@ -238,40 +230,7 @@ void inline can_resolve()
 
 void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 {
-	ULink_send_info("Data received! SID: \n");
-	
-	print_16(sid);
-	while(!(UCSR0A & (1 << UDRE0)))
-	{		
-	}
-	UDR0 = '\n';
-	
-	for(int i = 0; i < data_length; i++)
-	{		
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-		}
-		UDR0 = data[CAN_PACKAGE_PAYLOAD_OFFSET + i];
-	}
-	
-	while(!(UCSR0A & (1 << UDRE0)))
-	{
-	}
-	UDR0 = '\n';
-	
-	for(int i = 0; i < CAN_PACKAGE_PAYLOAD_OFFSET + data_length; i++)
-	{
-		print_binary(data[i]);
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-		}
-		UDR0 = ' ';
-	}
-	
-	while(!(UCSR0A & (1 << UDRE0)))
-	{
-	}
-	UDR0 = '\n';
+	can_resolve(sid, data);
 }
 
 

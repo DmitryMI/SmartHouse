@@ -276,6 +276,16 @@ void inline load_tx()
 		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
 		
 	}
+	else if(comdh == CAN_CMD_RESET)
+	{
+		mustRespond = 0;
+		/*response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
+		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
+		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;*/
+		
+	}
 	else if(comdh == CAN_CMD_PROG_FLASH)
 	{
 		int page_address =  PAGE_SIZE_BYTES * comdl;
