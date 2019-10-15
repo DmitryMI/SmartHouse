@@ -12,6 +12,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+#include <avr/sleep.h>
 
 
 #include "UartLink.h"
@@ -24,12 +25,15 @@
 #define LED_PIN			PC5
 #define LED_DDR			DDRC
 
+#define SLEEP_COUNTER_INIT 3
+
 #define EOL() while(!(UCSR0A & (1 << UDRE0))); UDR0 = '\n';
 
 #define CAN_PACKAGE_LEN 8
 
 uint8_t uart_package_buffer[CAN_PACKAGE_LEN];
 int uart_package_pos = 0;
+int can_enter_sleep = SLEEP_COUNTER_INIT;
 
 uint16_t device_sid = CAN_SID;
 
@@ -69,6 +73,9 @@ void print_binary(char ch)
 
 void uart_received_handler(char ch)
 {
+	wdt_reset();
+	can_enter_sleep = SLEEP_COUNTER_INIT;
+	
 	uint8_t buffer[CAN_PACKAGE_LEN];
 	
 	if(ch == 'M')
@@ -164,6 +171,9 @@ ISR(INT0_vect)
 
 void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 {
+	wdt_reset();
+	can_enter_sleep = SLEEP_COUNTER_INIT;
+	
 	ULink_send_info("");
 	
 	while(!(UCSR0A & (1 << UDRE0)))
@@ -190,13 +200,35 @@ void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 	UDR0 = '\n';
 }
 
+void enter_sleep_mode()
+{
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	sleep_enable();
+	sei();
+	sleep_cpu();
+	sleep_disable();	
+}
+
+ISR(WDT_vect)
+{
+	if(can_enter_sleep > 0)
+		can_enter_sleep--;	
+}
+
 
 int main(void)
 {
 	MCUSR = 0;
 	wdt_disable();
 	
-	//enable_power_reduction();
+	// Using WDT as 2.0 seconds timer causing interrupt
+	/*cli();
+	wdt_reset();
+	WDTCSR = ((1<<WDCE) | (1<<WDE));
+	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+	sei();*/
+	
+	enable_power_reduction();
 	
 	ULink_set_received_handler(uart_received_handler);
 	ULink_set_reset_request_handler(reset_handler);
@@ -209,5 +241,26 @@ int main(void)
 	while (1)
 	{
 		do_blink();
+		
+		/*if(can_enter_sleep <= 0)
+		{
+			
+			// Disabling WDT
+			cli();
+			wdt_reset();
+			WDTCSR = ((1<<WDCE) | (1<<WDE));
+			WDTCSR &= ~(1 << WDIE) & ~(1 << WDE);
+			sei();			
+			
+			enter_sleep_mode();
+			
+			can_enter_sleep = SLEEP_COUNTER_INIT;
+			// Enabling WDT				
+			cli();
+			wdt_reset();
+			WDTCSR = ((1<<WDCE) | (1<<WDE));
+			WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+			sei();
+		}*/
 	}
 }
