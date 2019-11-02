@@ -10,7 +10,14 @@
 #define DEVICECONFIG_H_
 
 #define BAUD	9600
-#define DEV_NAME	"Atmega328p"
+
+#if defined __AVR_ATmega328p__
+	#define DEV_NAME	"Atmega328p"
+#elif defined __AVR_ATmega8__
+	#define DEV_NAME	"Atmega8"
+#endif
+
+
 #define FIRM_VERS	"2.0"
 
 #define ACK			"ACK"
