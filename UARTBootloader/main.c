@@ -252,32 +252,25 @@ int main(void)
 
 	DDRC |= (1 << 5);
 	
-	PORTC |= (1 << 5);
-	
-	// DEBUG SEND
-	
-	/*for(int i = 0; i < 5; i++)
-	{
-		UART_send_info("Hello world!");
-		_delay_ms(1000);
-	}*/
+	PORTC |= (1 << 5);	
 
 	while(1)
 	{		
 		
 		char ch = UART_receive();
 		
-		// Communication in progress
 		reset_timer();
 		
-		if(PORTC & (1 << 5))
+		/*f(PORTC & (1 << 5))
 		{
 			PORTC &= ~(1 << 5);
 		}
 		else
 		{
 			PORTC |= (1 << 5);
-		}
+		}*/
+
+		PINC |= (1 << 5);
 		
 		resolveUartCommand(ch);		
 	}
