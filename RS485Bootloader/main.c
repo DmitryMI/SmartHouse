@@ -17,26 +17,19 @@
 #include <avr/pgmspace.h>
 #include <avr/wdt.h>
 
-#include "can_commands.h"
+#include "rs485_commands.h"
 
 // ***CONFIGURABLE***
 #define BOOT_VERS	1
 
 #define LED_PORT	PORTC
+#define LED_INP		PINC
 #define LED_DDR		DDRC
 #define LED_PIN		PC5
 
-#define SPI_PORT	PORTB
-#define SPI_DDR		DDRB
-#define SPI_MOSI	PB3
-#define SPI_MISO	PB4
-#define SPI_SCK		PB5
-#define SPI_CS_CAN	PB0
-#define SPI_CS_MCU	PB2
-
 #ifndef RS485_SID
 # warning "RS485_SID must be defined and unique"
-#define RS485_SID 0x7FE
+#define RS485_SID 0x03
 #endif
 // ******************
 
@@ -105,49 +98,42 @@ void inline program_handle(uint8_t *package)
 
 void uart_putc(uint8_t b)
 {
-	#if defined (__AVR_ATmega328P__)
+#if defined (__AVR_ATmega328P__)
 
 	while(!(UCSR0A & (1 << UDRE0)))
 	{
 	}
 	UDR0 = b;
 	
-	#elif defined (__AVR_ATmega8__)
+#elif defined (__AVR_ATmega8__)
 	while(!(UCSRA & (1 << UDRE)))
 	{
 	}
 	UDR = b;
-	#endif
+#endif
 }
 
 uint8_t uart_getc()
 {
-	#if defined (__AVR_ATmega328P__)
-	while ( !(UCSR0A & (1<<RXC)) );
+#if defined (__AVR_ATmega328P__)
+	while ( !(UCSR0A & (1<<RXC0)) );
 	reset_exit_timer();
 	return UDR0;
-	#elif defined (__AVR_ATmega8__)
+#elif defined (__AVR_ATmega8__)
 	while ( !(UCSRA & (1<<RXC)) );
 	reset_exit_timer();
 	return UDR;
-	#endif
+#endif
 }
 
-
-
-void inline rs485_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
-{	
-	for(int i = 0; i < data_length; i++)
-	{
-		uart_putc(data_buffer[i]);
-	}
-}
 
 int inline rs485_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 {	
 	for(int i = 0; i < data_length; i++)
 	{
 		data[i] = uart_getc();
+		//LED_INP |= (1 << LED_PIN);
+		LED_PORT ^= (1 << LED_PIN);
 	}	
 	
 	return data_length;
@@ -155,6 +141,12 @@ int inline rs485_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 
 void inline rs485_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 {	
+	uint8_t sidh = sid >> 8;
+	uint8_t sidl = sid;
+	
+	uart_putc(sidh);
+	uart_putc(sidl);
+	
 	// Sending bytes
 	for(int i = 0; i < data_length; i++)
 	{
@@ -169,13 +161,13 @@ void inline load_tx()
 	reset_exit_timer();
 	
 	// Reading data from rs485-controller
-	const int package_length = 13;
+	const int package_length = 10;
 	uint8_t package[package_length];
 	rs485_readrxb(0, package, package_length);
 	uint16_t sid = 0;
 	sid += package[0];
-	sid = sid << 3;
-	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
+	sid = sid << 8;
+	sid += package[1];
 	//uint8_t dlc = package[4];
 	
 	uint8_t addrh = package[CAN_OFFSET_ADDRH];
@@ -197,6 +189,7 @@ void inline load_tx()
 	uint8_t response[8] = {0};
 		
 	int mustRespond = 1;
+
 	
 	response[CAN_OFFSET_ADDRH - CAN_PAYLOAD_OFFSET] = sid >> 8;
 	response[CAN_OFFSET_ADDRL - CAN_PAYLOAD_OFFSET] = sid;
@@ -308,11 +301,11 @@ int main(void)
 	
 	LED_DDR |= (1 << LED_PIN);	
 	LED_PORT |= (1 << LED_PIN);
+
 	
     while (1) 
-    {
-		LED_PORT ^= (1 << LED_PIN);
-		load_tx();
+    {						
+		load_tx();		
     }
 }
 
