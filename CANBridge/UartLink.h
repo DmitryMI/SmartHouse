@@ -2,6 +2,26 @@
 
 #include <stdlib.h>
 
+#if defined (__AVR_ATmega8__)
+
+#define UCSRXB	UCSRB
+#define UCSRXA	UCSRA
+#define RXCIEX	RXCIE
+#define UDREX	UDRE
+#define UDRX	UDR
+#define RXCX	RXC
+
+#elif defined (__AVR_ATmega328p__)
+
+#define UCSRXB	UCSR0B
+#define UCSRXA	UCSR0A
+#define RXCIEX	RXCIE0
+#define UDREX	UDRE0
+#define UDRX	UDR0
+#define RXCX	RXC0
+
+#endif
+
 #include "DeviceConfig.h"
 
 typedef void (*received_callback_t) (char ch);

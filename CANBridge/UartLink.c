@@ -43,28 +43,37 @@ void ULink_init()
 {
 	unsigned int ubrr = F_CPU / 16 / BAUD - 1;
 	
-	/*Set baud rate */
+#if defined (__AVR_ATmega328P__)
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
-	
 	/* Enable receiver and transmitter */
 	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
-	
 	/* Set frame format: 8data, 2stop bit */
 	UCSR0C = (1<<USBS0)|(3<<UCSZ00);
+	
+	UCSR0B |= (1 << RXCIE0);
+	
+#elif defined (__AVR_ATmega8__)
+	UBRRH = (unsigned char)(ubrr>>8);
+	UBRRL = (unsigned char)ubrr;
+	UCSRB = (1<<RXEN)|(1<<TXEN);
+	UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
+	
+	UCSRB |= (1 << RXCIE);	
+#endif
 	
 	// Enabling interrupt
 	sei();
 	
-	UCSR0B |= (1 << RXCIE0);
+	
 }
 
 void ULink_send_char(char singleChar)
 {
-	while(!(UCSR0A & (1 << UDRE0)))
+	while(!(UCSRXA & (1 << UDREX)))
 	{
 	}
-	UDR0 = singleChar;
+	UDRX = singleChar;
 }
 
 void ULink_send(char* str)
@@ -127,20 +136,32 @@ void resolveUartCommand(char ch)
 
 char ULink_receive()
 {
-	while ( !(UCSR0A & (1<<RXC0)) );
+	while ( !(UCSRXA & (1<<RXCX)) );
 		
-	return UDR0;
+	return UDRX;
 }
 
 void ULink_received_handler()
 {
-	char data = UDR0;
+	char data = UDRX;
 
 	resolveUartCommand(data);
 }
+
+#if defined (__AVR_ATmega328p__)
 
 ISR(USART_RX_vect)
 {
 	//ULink_send_info("RX interrupt!\n");
 	ULink_received_handler();
 }
+
+#elif defined (__AVR_ATmega8__)
+
+ISR(USART_RXC_vect)
+{
+	//ULink_send_info("RX interrupt!\n");
+	ULink_received_handler();
+}
+
+#endif

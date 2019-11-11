@@ -13,6 +13,7 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 #include <avr/sleep.h>
+#include <avr/eeprom.h>
 
 
 #include "UartLink.h"
@@ -27,7 +28,7 @@
 
 #define SLEEP_COUNTER_INIT 3
 
-#define EOL() while(!(UCSR0A & (1 << UDRE0))); UDR0 = '\n';
+#define EOL() while(!(UCSRXA & (1 << UDREX))); UDRX = '\n';
 
 #define CAN_PACKAGE_LEN 8
 
@@ -52,24 +53,23 @@ void print_binary(char ch)
 {
 	for(int i = 0; i < 8; i++)
 	{
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{
 			
 		}
 		
 		if(ch & (1 << 7))
 		{
-			UDR0 = '1';
+			UDRX = '1';
 		}
 		else
 		{
-			UDR0 = '0';
+			UDRX = '0';
 		}
 		
 		ch = ch << 1;
 	}
 }
-
 
 void uart_received_handler(char ch)
 {
@@ -80,7 +80,7 @@ void uart_received_handler(char ch)
 	
 	if(ch == 'M')
 	{
-		UCSR0B &= ~(1 << RXCIE0);	// Disabling UART RX interrupt
+		UCSRXB &= ~(1 << RXCIEX);	// Disabling UART RX interrupt
 		
 		uint8_t sidh = ULink_receive();
 		uint8_t sidl = ULink_receive();
@@ -89,11 +89,11 @@ void uart_received_handler(char ch)
 		device_sid = device_sid << 8;
 		device_sid = sidl;
 
-		UCSR0B |= (1 << RXCIE0);	// Enabling UART RX interrupt
+		UCSRXB |= (1 << RXCIEX);	// Enabling UART RX interrupt
 	}	
 	else if(ch == 'I')
 	{
-		UCSR0B &= ~(1 << RXCIE0);	// Disabling UART RX interrupt
+		UCSRXB &= ~(1 << RXCIEX);	// Disabling UART RX interrupt
 		
 		for(int i = 0; i < CAN_PACKAGE_LEN; i++)
 		{
@@ -103,7 +103,7 @@ void uart_received_handler(char ch)
 		can_load_tx0_buffer(CAN_SID, buffer, CAN_PACKAGE_LEN);
 		can_rts(CAN_RTS_TXB0);		
 		
-		UCSR0B |= (1 << RXCIE0);	// Enabling UART RX interrupt
+		UCSRXB |= (1 << RXCIEX);	// Enabling UART RX interrupt
 	}
 	else if(ch == 'T')
 	{
@@ -114,47 +114,48 @@ void uart_received_handler(char ch)
 		
 		ULink_send_info("Status: ");		
 		print_binary(status);
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{
 		}
-		UDR0 = '\n';
+		UDRX = '\n';
 		
 		ULink_send_info("CANINTE: ");
 		print_binary(caninte);
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{
 		}
-		UDR0 = '\n';
+		UDRX = '\n';
 		
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{		
 		}
-		UDR0 = '\n';
+		UDRX = '\n';
 		
 		uint8_t canctrl;
 		can_read(CAN_REG_CANCTRL, &canctrl, 1);
 		ULink_send_info("CANCTRL register: ");
 		print_binary(canctrl);
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{
 			
 		}
-		UDR0 = '\n';
+		UDRX = '\n';
 	}	
 }
 
 void do_blink()
 {
 	LED_PORT |= (1 << LED_PIN);
-	_delay_ms(200);
+	_delay_ms(50);
 	LED_PORT &= ~(1 << LED_PIN);
-	_delay_ms(200);
+	_delay_ms(2000);
 }
 
 void  inline enable_power_reduction()
 {
 	ADCSRA &= ~(ADEN);	// Turning off ADC
 	
+#if defined (__AVR_ATmega328p__)
 	PRR =
 	(1 << PRTWI)	|	// Disabling IIC
 	(1 << PRTIM2)	|	// Disabling Timer2
@@ -162,6 +163,9 @@ void  inline enable_power_reduction()
 	(1 << PRTIM1)	|	// Disabling Timer1
 	//(1 << PRSPI)	|	// Disabling SPI
 	(1 << PRADC);		// Disabling ADC
+#elif defined (__AVR_ATmega8__)
+	// TODO Power reduction on Atmega8
+#endif
 }
 
 ISR(INT0_vect)
@@ -176,28 +180,28 @@ void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 	
 	ULink_send_info("");
 	
-	while(!(UCSR0A & (1 << UDRE0)))
+	while(!(UCSRXA & (1 << UDREX)))
 	{
 	}
-	UDR0 = sid >> 8;
+	UDRX = sid >> 8;
 	
-	while(!(UCSR0A & (1 << UDRE0)))
+	while(!(UCSRXA & (1 << UDREX)))
 	{
 	}
-	UDR0 = sid;
+	UDRX = sid;
 	
 	for(int i = 0; i < CAN_PACKAGE_LEN; i++)
 	{
-		while(!(UCSR0A & (1 << UDRE0)))
+		while(!(UCSRXA & (1 << UDREX)))
 		{
 		}
-		UDR0 = data[CAN_PAYLOAD_OFFSET + i];
+		UDRX = data[CAN_PAYLOAD_OFFSET + i];
 	}
 	
-	while(!(UCSR0A & (1 << UDRE0)))
+	while(!(UCSRXA & (1 << UDREX)))
 	{
 	}
-	UDR0 = '\n';
+	UDRX = '\n';
 }
 
 void enter_sleep_mode()
@@ -206,27 +210,23 @@ void enter_sleep_mode()
 	sleep_enable();
 	sei();
 	sleep_cpu();
-	sleep_disable();	
-}
-
-ISR(WDT_vect)
-{
-	if(can_enter_sleep > 0)
-		can_enter_sleep--;	
+	sleep_disable();
 }
 
 
 int main(void)
 {
+	// Setting position of reset vectors table
+	#if defined (__AVR_ATmega328p__)
+	MCUCR |= (1 << IVCE);
+	MCUCR &= ~(1 << IVSEL);
+	#elif defined (__AVR_ATmega8__)
+	GICR |= (1 << IVCE);
+	GICR &= ~(1 << IVSEL);
+	#endif
+	
 	MCUSR = 0;
 	wdt_disable();
-	
-	// Using WDT as 2.0 seconds timer causing interrupt
-	/*cli();
-	wdt_reset();
-	WDTCSR = ((1<<WDCE) | (1<<WDE));
-	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
-	sei();*/
 	
 	enable_power_reduction();
 	
@@ -240,27 +240,7 @@ int main(void)
 	
 	while (1)
 	{
-		do_blink();
+		do_blink();	
 		
-		/*if(can_enter_sleep <= 0)
-		{
-			
-			// Disabling WDT
-			cli();
-			wdt_reset();
-			WDTCSR = ((1<<WDCE) | (1<<WDE));
-			WDTCSR &= ~(1 << WDIE) & ~(1 << WDE);
-			sei();			
-			
-			enter_sleep_mode();
-			
-			can_enter_sleep = SLEEP_COUNTER_INIT;
-			// Enabling WDT				
-			cli();
-			wdt_reset();
-			WDTCSR = ((1<<WDCE) | (1<<WDE));
-			WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
-			sei();
-		}*/
 	}
 }

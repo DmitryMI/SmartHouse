@@ -190,6 +190,22 @@ void _can_int0_handler()
 	}
 }
 
+void can_enable_int0()
+{
+#if defined (__AVR_ATmega328P__)
+	// Configuring interrupt on MCU
+	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	EIMSK |= (1 << INT0);						// Enabling INT0
+	sei();
+#elif (__AVR_ATmega8__)
+	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	MCUCR &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	GICR |= (1 << INT0);						// Enabling INT0
+	sei();
+#endif	
+}
+
 void can_init(uint8_t flags)
 {
 	// Initializaing SPI
@@ -210,10 +226,7 @@ void can_init(uint8_t flags)
 	if(flags & CAN_MCU_INT_EN)
 	{
 		// Configuring interrupt on MCU
-		DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-		EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
-		EIMSK |= (1 << INT0);						// Enabling INT0
-		sei();
+		can_enable_int0();
 		
 		// Configuring interrupt on CAN-controller
 		uint8_t caninte = CAN_INT_RX0IE;
