@@ -208,7 +208,7 @@ void inline can_resolve(uint16_t sid, uint8_t *package)
 	{
 		response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
 		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = 128;
+		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = SPM_PAGESIZE;
 		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
 		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
 		
@@ -239,6 +239,17 @@ int main(void)
 {
 	MCUSR = 0;
 	wdt_disable();
+	
+		// Setting position of reset vectors table
+#if defined (__AVR_ATmega328p__)
+	MCUCR |= (1 << IVCE);
+	MCUCR |= (1 << IVSEL);
+#elif defined (__AVR_ATmega8__)
+	/* Enable change of Interrupt Vectors */
+	GICR = (1<<IVCE);
+	/* Move interrupts to main Flash section */
+	GICR = 0;
+#endif
 	
 	device_sid = eeprom_read_word(0);
 	
