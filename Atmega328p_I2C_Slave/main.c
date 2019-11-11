@@ -35,9 +35,10 @@ void set_leds_state(pin_value led0, pin_value led1, pin_value led2)
 	DDR_LEDS2 |= (1 << PIN_LED1) | (1 << PIN_LED2);
 	
 	if(led0 == HIGH)
-	{
+	{		
 		PORT_LEDS1 |= (1 << PIN_LED0);
 	}
+
 	else if (led0 == LOW)
 	{
 		PORT_LEDS1 &= ~(1 << PIN_LED0);
