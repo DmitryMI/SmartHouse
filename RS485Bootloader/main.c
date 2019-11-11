@@ -176,7 +176,8 @@ void inline load_tx()
 	addr = addr << 8;
 	addr += addrl;
 	
-	if(addr != 0 && addr != RS485_SID)
+	// BROADCAST MESSAGES ARE NOT ALLOWED IN RS-485!
+	if(addr != RS485_SID)
 	{
 		return;
 	}
