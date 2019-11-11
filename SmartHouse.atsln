@@ -33,6 +33,10 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "CANBridge", "CANBridge\CANB
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "RS485Bootloader", "RS485Bootloader\RS485Bootloader.cproj", "{33C757FF-17D1-4A3F-BF43-0A408B8CCCD2}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "RS485RoomHub", "RS485RoomHub\RS485RoomHub.cproj", "{2F849665-FE81-47A7-9F9F-9AF93425B446}"
+EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Blinker", "Blinker\Blinker.cproj", "{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Atmega328p_AVR = Debug|Atmega328p_AVR
@@ -172,6 +176,22 @@ Global
 		{33C757FF-17D1-4A3F-BF43-0A408B8CCCD2}.Release|Atmega8_AVR.ActiveCfg = Release|AVR
 		{33C757FF-17D1-4A3F-BF43-0A408B8CCCD2}.Release|AVR.ActiveCfg = Release|AVR
 		{33C757FF-17D1-4A3F-BF43-0A408B8CCCD2}.Release|AVR.Build.0 = Release|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Debug|Atmega328p_AVR.ActiveCfg = Debug|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Debug|Atmega8_AVR.ActiveCfg = Debug|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Debug|AVR.ActiveCfg = Debug|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Debug|AVR.Build.0 = Debug|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Release|Atmega328p_AVR.ActiveCfg = Release|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Release|Atmega8_AVR.ActiveCfg = Release|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Release|AVR.ActiveCfg = Release|AVR
+		{2F849665-FE81-47A7-9F9F-9AF93425B446}.Release|AVR.Build.0 = Release|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Debug|Atmega328p_AVR.ActiveCfg = Debug|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Debug|Atmega8_AVR.ActiveCfg = Debug|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Debug|AVR.ActiveCfg = Debug|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Debug|AVR.Build.0 = Debug|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Release|Atmega328p_AVR.ActiveCfg = Release|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Release|Atmega8_AVR.ActiveCfg = Release|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Release|AVR.ActiveCfg = Release|AVR
+		{EAFD3321-EB59-4C93-AFD5-59B5F8FFA535}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
