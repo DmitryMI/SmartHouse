@@ -244,8 +244,8 @@ int main(void)
 	MCUCR |= (1 << IVCE);
 	MCUCR |= (1 << IVSEL);
 #elif defined (__AVR_ATmega8__)
-	GICR |= (1 << IVCE);
-	GICR |= (1 << IVSEL);
+	GICR = (1 << IVCE);		// |= currently is flashed to Atmega8 #1!
+	GICR = (1 << IVSEL);	// |= currently is flashed to Atmega8 #1!
 #endif
 	
 	// Disabling WDT from resetting the system
