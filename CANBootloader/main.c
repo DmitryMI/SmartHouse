@@ -41,10 +41,6 @@ Boot sector address:
 #define SPI_CS_CAN	PB0
 #define SPI_CS_MCU	PB2
 
-#ifndef CAN_SID
-# warning "CAN_SID must be defined and unique"
-#define CAN_SID 0x4
-#endif
 // ******************
 
 #define CAN_REG_CANINTE			0x2B
@@ -58,7 +54,7 @@ Boot sector address:
 
 #define PAGE_SIZE_BYTES SPM_PAGESIZE
 
-uint16_t can_sid EEMEM;
+uint16_t can_sid;
 
 uint32_t prog_page_address = 0;
 uint8_t prog_byte_address = 0;
@@ -262,7 +258,7 @@ void inline load_tx()
 	addr = addr << 8;
 	addr += addrl;
 	
-	if(addr != 0 && addr != CAN_SID)
+	if(addr != 0 && addr != can_sid)
 	{
 		return;
 	}
@@ -327,7 +323,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_load_tx0_buffer(can_sid, response, 8);
 		can_rts(CAN_RTS_TXB0);
 	}	
 }
@@ -433,6 +429,8 @@ int main(void)
 	// Disabling WDT from resetting the system
 	MCUSR = 0;
 	wdt_disable();
+	
+	can_sid = eeprom_read_word(0);
 	
 	// Initializing CAN
 	can_init();

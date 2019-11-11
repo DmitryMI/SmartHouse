@@ -12,6 +12,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+#include <avr/eeprom.h>
 
 
 #include "UartLink.h"
@@ -24,9 +25,9 @@
 #define LED_PIN			PC5
 #define LED_DDR			DDRC
 
-#define CAN_SID			2046
-
 #define EOL() while(!(UCSR0A & (1 << UDRE0))); UDR0 = '\n';
+
+uint16_t device_sid;
 
 void reset_handler()
 {
@@ -181,7 +182,7 @@ void inline can_resolve(uint16_t sid, uint8_t *package)
 	addr = addr << 8;
 	addr += addrl;
 	
-	if(addr != 0 && addr != CAN_SID)
+	if(addr != 0 && addr != device_sid)
 	{
 		return;
 	}
@@ -223,7 +224,7 @@ void inline can_resolve(uint16_t sid, uint8_t *package)
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_load_tx0_buffer(device_sid, response, 8);
 		can_rts(CAN_RTS_TXB0);
 	}
 }
@@ -238,6 +239,8 @@ int main(void)
 {
 	MCUSR = 0;
 	wdt_disable();
+	
+	device_sid = eeprom_read_word(0);
 	
 	//enable_power_reduction();
 	

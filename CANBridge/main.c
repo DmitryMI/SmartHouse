@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <avr/sleep.h>
 #include <avr/eeprom.h>
+#include <stdio.h>
 
 
 #include "UartLink.h"
@@ -36,7 +37,7 @@ uint8_t uart_package_buffer[CAN_PACKAGE_LEN];
 int uart_package_pos = 0;
 int can_enter_sleep = SLEEP_COUNTER_INIT;
 
-uint16_t device_sid = CAN_SID;
+uint16_t device_sid;
 
 void reset_handler()
 {
@@ -140,6 +141,16 @@ void uart_received_handler(char ch)
 			
 		}
 		UDRX = '\n';
+		
+		char buffer[32];
+		sprintf(buffer, "Device SID: %d", device_sid);
+		ULink_send_info(buffer);
+
+		while(!(UCSRXA & (1 << UDREX)))
+		{
+			
+		}
+		UDRX = '\n';
 	}	
 }
 
@@ -216,6 +227,7 @@ void enter_sleep_mode()
 
 int main(void)
 {
+	
 	// Setting position of reset vectors table
 	#if defined (__AVR_ATmega328p__)
 	MCUCR |= (1 << IVCE);
@@ -229,6 +241,9 @@ int main(void)
 	wdt_disable();
 	
 	enable_power_reduction();
+	
+	device_sid = eeprom_read_word(0);
+	//device_sid = can_sid;
 	
 	ULink_set_received_handler(uart_received_handler);
 	ULink_set_reset_request_handler(reset_handler);
