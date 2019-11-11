@@ -12,9 +12,9 @@
 #define BAUD	9600
 
 #if defined __AVR_ATmega328p__
-	#define DEV_NAME	"Atmega328p"
+	#define DEV_NAME	"ATmega328p"
 #elif defined __AVR_ATmega8__
-	#define DEV_NAME	"Atmega8"
+	#define DEV_NAME	"ATmega8"
 #endif
 
 
