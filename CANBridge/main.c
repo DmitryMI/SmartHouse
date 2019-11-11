@@ -12,9 +12,12 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+<<<<<<< HEAD
 #include <avr/sleep.h>
 #include <avr/eeprom.h>
 #include <stdio.h>
+=======
+>>>>>>> parent of a44ddf0... Sleep disabled
 
 
 #include "UartLink.h"
@@ -27,15 +30,18 @@
 #define LED_PIN			PC5
 #define LED_DDR			DDRC
 
+<<<<<<< HEAD
 #define SLEEP_COUNTER_INIT 3
 
 #define EOL() while(!(UCSRXA & (1 << UDREX))); UDRX = '\n';
+=======
+#define EOL() while(!(UCSR0A & (1 << UDRE0))); UDR0 = '\n';
+>>>>>>> parent of a44ddf0... Sleep disabled
 
 #define CAN_PACKAGE_LEN 8
 
 uint8_t uart_package_buffer[CAN_PACKAGE_LEN];
 int uart_package_pos = 0;
-int can_enter_sleep = SLEEP_COUNTER_INIT;
 
 uint16_t device_sid;
 
@@ -74,9 +80,6 @@ void print_binary(char ch)
 
 void uart_received_handler(char ch)
 {
-	wdt_reset();
-	can_enter_sleep = SLEEP_COUNTER_INIT;
-	
 	uint8_t buffer[CAN_PACKAGE_LEN];
 	
 	if(ch == 'M')
@@ -186,9 +189,6 @@ ISR(INT0_vect)
 
 void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 {
-	wdt_reset();
-	can_enter_sleep = SLEEP_COUNTER_INIT;
-	
 	ULink_send_info("");
 	
 	while(!(UCSRXA & (1 << UDREX)))
@@ -215,6 +215,7 @@ void can_data_received(uint16_t sid, uint8_t *data, uint8_t data_length)
 	UDRX = '\n';
 }
 
+<<<<<<< HEAD
 void enter_sleep_mode()
 {
 	set_sleep_mode(SLEEP_MODE_IDLE);
@@ -224,6 +225,8 @@ void enter_sleep_mode()
 	sleep_disable();
 }
 
+=======
+>>>>>>> parent of a44ddf0... Sleep disabled
 
 int main(void)
 {
@@ -240,7 +243,11 @@ int main(void)
 	MCUSR = 0;
 	wdt_disable();
 	
+<<<<<<< HEAD
 	enable_power_reduction();
+=======
+	//enable_power_reduction();
+>>>>>>> parent of a44ddf0... Sleep disabled
 	
 	device_sid = eeprom_read_word(0);
 	//device_sid = can_sid;
@@ -255,7 +262,11 @@ int main(void)
 	
 	while (1)
 	{
+<<<<<<< HEAD
 		do_blink();	
 		
+=======
+		do_blink();
+>>>>>>> parent of a44ddf0... Sleep disabled
 	}
 }
