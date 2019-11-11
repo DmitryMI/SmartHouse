@@ -19,8 +19,6 @@
 #include <avr/pgmspace.h>
 #include <avr/wdt.h>
 
-#define PAGE_SIZE_BYTES SPM_PAGESIZE
-
 uint32_t prog_page_address = 0;
 
 void program_page(uint32_t page_byte_addr, uint8_t *page_data)
@@ -31,7 +29,7 @@ void program_page(uint32_t page_byte_addr, uint8_t *page_data)
 	boot_page_erase(page_byte_addr);
 	boot_spm_busy_wait();	// Wait until the memory is erased.
 
-	for (int i = 0; i < PAGE_SIZE_BYTES; i += 2)
+	for (int i = 0; i < SPM_PAGESIZE; i += 2)
 	{
 		// Set up little-endian word.
 		uint16_t w = *page_data++;
@@ -53,7 +51,7 @@ void UART_init()
 	unsigned int ubrr = F_CPU / 16 / BAUD - 1;
 	
 	/*Set baud rate */
-#if defined (__AVR_ATmega328P__)
+#if defined (__AVR_ATmega328p__)
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
 	
@@ -124,15 +122,13 @@ inline void reset_timer()
 
 char UART_receive()
 {
-	#if defined (__AVR_ATmega328P__)
-	while ( !(UCSR0A & (1<<RXC)) );
-	reset_timer();
+#if defined (__AVR_ATmega328P__)
+	while ( !(UCSR0A & (1<<RXC)) );	
 	return UDR0;
-	#elif defined (__AVR_ATmega8__)
-	while ( !(UCSRA & (1<<RXC)) );
-	reset_timer();
+#elif defined (__AVR_ATmega8__)
+	while ( !(UCSRA & (1<<RXC)) );	
 	return UDR;
-	#endif
+#endif
 }
 
 void prog_handler()
@@ -141,12 +137,14 @@ void prog_handler()
 	uint8_t sreg_tmp = SREG;
 	cli();
 
-	unsigned char A[PAGE_SIZE_BYTES];	
+	unsigned char A[SPM_PAGESIZE];	
 	
-	for (uint16_t i = 0; i < PAGE_SIZE_BYTES; i++)
+	for (uint16_t i = 0; i < SPM_PAGESIZE; i++)
 	{
 		A[i] = UART_receive();				
 	}
+	
+	reset_timer();
 	
 	
 	program_page(prog_page_address, A);
@@ -185,12 +183,13 @@ void resolveUartCommand(char ch)
 	}
 	
 	if(ch == 'X')
-	{
-		UART_send_info("X command received!\n");
+	{		
 		
 #if defined (__AVR_ATmega328p__)
+		UART_send_info("X command received!\n");
 		asm("jmp 0x0000");
 #elif defined (__AVR_ATmega8__)
+		UART_send_info("X command received!\n");
 		asm("rjmp app_start");
 #endif
 	}
@@ -216,7 +215,7 @@ ISR(TIMER1_OVF_vect)
 inline void setup_timer()
 {
 	
-#if defined (__AVR_ATmega328P__)
+#if defined (__AVR_ATmega328p__)
 	// Using WDT as 2.0 seconds timer causing interrupt
 	cli();
 	wdt_reset();
@@ -241,14 +240,24 @@ inline void setup_timer()
 int main(void)
 {	
 	// Setting position of reset vectors table
+#if defined (__AVR_ATmega328p__)
 	MCUCR |= (1 << IVCE);
 	MCUCR |= (1 << IVSEL);
+#elif defined (__AVR_ATmega8__)
+	GICR |= (1 << IVCE);
+	GICR |= (1 << IVSEL);
+#endif
 	
 	// Disabling WDT from resetting the system
+#if defined (__AVR_ATmega328p__)
 	MCUSR = 0;
+#elif defined (__AVR_ATmega8__)
+	MCUCSR = 0;
+#endif
+
 	wdt_disable();	
 
-	setup_timer();		
+	//setup_timer();		
 
 	UART_init();
 
@@ -263,16 +272,18 @@ int main(void)
 		
 		reset_timer();
 		
-		/*f(PORTC & (1 << 5))
+#if defined (__AVR_ATmega328p__)
+		PINC |= (1 << 5);
+#elif defined (__AVR_ATmega8__)
+		if(PORTC & (1 << 5))
 		{
 			PORTC &= ~(1 << 5);
 		}
 		else
 		{
 			PORTC |= (1 << 5);
-		}*/
-
-		PINC |= (1 << 5);
+		}
+#endif	
 		
 		resolveUartCommand(ch);		
 	}
