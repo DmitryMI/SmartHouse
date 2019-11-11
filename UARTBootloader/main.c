@@ -257,7 +257,7 @@ int main(void)
 
 	wdt_disable();	
 
-	//setup_timer();		
+	setup_timer();		
 
 	UART_init();
 
