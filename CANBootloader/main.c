@@ -73,10 +73,7 @@ void inline timer_reset()
 }
 
 void inline program_handle(uint8_t *package)
-{
-	uint8_t sreg = SREG;
-	cli();
-	
+{	
 	uint16_t w1 = package[0];
 	w1 += package[1] << 8;	
 	uint16_t w2 = package[2];
@@ -100,8 +97,6 @@ void inline program_handle(uint8_t *package)
 		
 		prog_page_address += PAGE_SIZE_BYTES;
 	}
-	
-	SREG = sreg;
 }
 
 void spi_putc(uint8_t b)				// INLINE increases size!
@@ -135,7 +130,7 @@ void inline can_reset_controller()
 	can_cmd(cmd);
 }
 
-void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
+void inline can_write(uint8_t reg_addr, uint8_t data)
 {
 	uint8_t write_cmd = (1 << 1);
 	
@@ -146,7 +141,7 @@ void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
 	
 	//for(int i = 0; i < data_length; i++)
 	//{
-		spi_putc(data_buffer[0]);
+		spi_putc(data);
 	//}
 	
 	SPI_PORT |= (1 << SPI_CS_CAN);
@@ -177,7 +172,7 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	// Pulling CS low
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	
-	// Sending LOAD TXB intstruction
+	// Sending LOAD TXB instruction
 	spi_putc(cmd);
 	
 	// Filling SID
@@ -272,7 +267,9 @@ void inline load_tx()
 	{
 		int page_address =  PAGE_SIZE_BYTES * comdl;
 		prog_page_address = page_address;
+		cli();
 		program_handle(package + CAN_OFFSET_DATA);	
+		sei();
 		
 		if(prog_page_address == page_address)	
 		{
@@ -318,47 +315,16 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	//DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	//EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
-	sei();
-	
-	
-	// Configuring interrupt on CAN-controller
-	/*uint8_t caninte = CAN_INT_RX0IE;	
-	can_write(CAN_REG_CANINTE, &caninte, 1);*/
-	
-	
-	uint8_t caninte = 0;
+
 	wait100ms();
-	caninte = CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte);
+	uint8_t caninte = CAN_INT_RX0IE;
+	can_write(CAN_REG_CANINTE, caninte);
 
 	// Set normal operation mode
 	uint8_t canctrl = (1 << 0) | (1 << 1) | (1 << 2);
-	can_write(CAN_REG_CANCTRL, &canctrl);
+	can_write(CAN_REG_CANCTRL, canctrl);
 }
-
-/* Can be used in polling*/
-uint8_t inline can_read_status()
-{
-	uint8_t cmd = (1 << 7) | (1 << 5);		// 1010 0000
-	uint8_t status;
-
-	// Pulling CS low
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	
-	spi_putc(cmd);
-	
-	SPDR = 0xFF;
-	status = spi_getc();
-	
-	// Setting SS to high
-	SPI_PORT |= (1 << SPI_CS_CAN);
-	
-	return status;
-}
-
 
 int main(void)
 {
