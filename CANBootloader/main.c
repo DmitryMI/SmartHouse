@@ -59,13 +59,18 @@ uint8_t prog_byte_address = 0;
 
 void inline exit_bootloader()
 {
-	MCUCR = (1 << IVCE);
-	MCUCR = 0;
+	//MCUCR = (1 << IVCE);
+	//MCUCR = 0;
 	
 	asm("jmp 0");
 }
 
-ISR(WDT_vect)
+void inline reset_exit_timer()
+{
+	TCNT1 = 0;
+}
+
+ISR(TIMER1_OVF_vect)
 {
 	exit_bootloader();
 }
@@ -114,12 +119,23 @@ uint8_t spi_getc()
 	return SPDR;
 }
 
+void can_cmd(uint8_t cmd)
+{
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	spi_putc(cmd);
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
+
 void inline can_reset_controller()
 {
 	uint8_t cmd = (1 << 7) | (1 << 6);
-	SPI_PORT &= ~(1 << SPI_CS_CAN);	
-	spi_putc(cmd);
-	SPI_PORT |= (1 << SPI_CS_CAN);
+	can_cmd(cmd);
+}
+
+void inline can_rts(uint8_t txb_mask)
+{
+	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
+	can_cmd(cmd);
 }
 
 
@@ -213,17 +229,7 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-void inline can_rts(uint8_t txb_mask)
-{
-	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
 
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	
-	spi_putc(cmd);
-	
-	// Setting SS to high
-	SPI_PORT |= (1 << SPI_CS_CAN);
-}
 
 void inline load_tx()
 {
@@ -256,7 +262,8 @@ void inline load_tx()
 	
 	//uint8_t *data = package + CAN_OFFSET_DATA;
 	
-	uint8_t response[8] = {0};
+	//uint8_t response[8] = {0};
+	uint8_t response[8];
 		
 	int mustRespond = 1;
 	
@@ -350,26 +357,6 @@ void inline can_init()
 	can_write(CAN_REG_CANCTRL, &canctrl);
 }
 
-/* Can be used in polling*/
-uint8_t inline can_read_status()
-{
-	uint8_t cmd = (1 << 7) | (1 << 5);		// 1010 0000
-	uint8_t status;
-
-	// Pulling CS low
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	
-	spi_putc(cmd);
-	
-	SPDR = 0xFF;
-	status = spi_getc();
-	
-	// Setting SS to high
-	SPI_PORT |= (1 << SPI_CS_CAN);
-	
-	return status;
-}
-
 void inline read_sid_eeprom()
 {		
 	EEAR = 0;
@@ -382,6 +369,11 @@ void inline read_sid_eeprom()
 	device_sid += EEDR << 8;	
 }
 
+void inline enable_timer()
+{
+	TIMSK1 |= (1 << TOIE1);
+	TCCR1B |= (1 << CS12);
+}
 
 int main(void)
 {
@@ -400,10 +392,9 @@ int main(void)
 	// Initializing CAN
 	can_init();
 	
-	// Using WDT as 2.0 seconds timer causing interrupt		
-	wdt_reset();
-	WDTCSR = ((1<<WDCE) | (1<<WDE));
-	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+	// Using TIMER1 as 2.0 seconds timer causing interrupt		
+	enable_timer();
+	
 	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
