@@ -322,14 +322,7 @@ void inline load_tx()
 
 
 ISR(INT0_vect)
-{	
-	/*EIMSK &= ~(1 << INT0);
-	DDRB |= (1 << PB1);
-	PORTB |= (1 << PB1);*/
-	
-	DDRB |= (1 << PB1);
-	PORTB |= (1 << PB1);
-	
+{		
 	load_tx();
 }
 
@@ -412,8 +405,8 @@ int main(void)
 	
     while (1) 
     {
-		_delay_ms(100);
-		LED_PORT ^= (1 << LED_PIN);
+		//_delay_ms(100);
+		//LED_PORT ^= (1 << LED_PIN);
 		/*LED_PORT &= ~(1 << LED_PIN);
 		//_delay_ms(100);
 		LED_PORT |= (1 << LED_PIN);*/
