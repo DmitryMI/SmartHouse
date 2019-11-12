@@ -37,6 +37,9 @@
 uint16_t CAN_SID;
 // ******************
 
+#define PACKAGE_SIZE_IN		13
+#define PACKAGE_SIZE_OUT	8
+
 #define CAN_REG_CANINTE			0x2B
 #define CAN_INT_RX0IE			(1 << 0)
 
@@ -132,26 +135,7 @@ void inline can_reset_controller()
 	can_cmd(cmd);
 }
 
-
-int inline can_read(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
-{
-	uint8_t read_cmd = (1 << 1) | (1 << 0);
-	
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	
-	spi_putc(read_cmd);
-	spi_putc(reg_addr);
-	
-	for(int i = 0; i < data_length; i++)
-	{
-		SPDR = 0xFF;
-		data_buffer[i] = spi_getc();
-	}
-	SPI_PORT |= (1 << SPI_CS_CAN);	
-	return data_length;
-}
-
-void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
+void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
 {
 	uint8_t write_cmd = (1 << 1);
 	
@@ -160,23 +144,23 @@ void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	spi_putc(write_cmd);
 	spi_putc(reg_addr);
 	
-	for(int i = 0; i < data_length; i++)
-	{
-		spi_putc(data_buffer[i]);
-	}
+	//for(int i = 0; i < data_length; i++)
+	//{
+		spi_putc(data_buffer[0]);
+	//}
 	
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
+void inline can_readrxb(uint8_t *data)
 {
-	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1001 0nn0
+	uint8_t cmd = (1 << 7) | (1 << 4);		// 1001 0nn0
 
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	
 	spi_putc(cmd);
 	
-	for(int i = 0; i < data_length; i++)
+	for(int i = 0; i < PACKAGE_SIZE_IN; i++)
 	{
 		SPDR = 0xFF;
 		data[i] = spi_getc();
@@ -184,11 +168,9 @@ int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 	
 	// Setting SS to high
 	SPI_PORT |= (1 << SPI_CS_CAN);
-	
-	return data_length;
 }
 
-void inline can_load_tx0_buffer(uint8_t *data, int data_length)
+void inline can_load_tx0_buffer(uint8_t *data)
 {
 	uint8_t cmd = (1 << 6);
 	
@@ -214,10 +196,10 @@ void inline can_load_tx0_buffer(uint8_t *data, int data_length)
 	spi_putc(0xFF);
 	
 	// Filling DLC
-	spi_putc(data_length);
+	spi_putc(PACKAGE_SIZE_OUT);
 	
 	// Sending bytes
-	for(int i = 0; i < data_length; i++)
+	for(int i = 0; i < PACKAGE_SIZE_OUT; i++)
 	{
 		spi_putc(data[i]);
 	}
@@ -235,9 +217,8 @@ void inline load_tx()
 	timer_reset();
 	
 	// Reading data from CAN-controller
-	const int package_length = 13;
-	uint8_t package[package_length];
-	can_readrxb(0, package, package_length);
+	uint8_t package[PACKAGE_SIZE_IN];
+	can_readrxb(package);
 	uint16_t sid = 0;
 	sid += package[0];
 	sid = sid << 3;
@@ -311,7 +292,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(response, 8);
+		can_load_tx0_buffer(response);
 		can_rts();
 	}	
 }
@@ -351,11 +332,11 @@ void inline can_init()
 	uint8_t caninte = 0;
 	wait100ms();
 	caninte = CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte, 1);
+	can_write(CAN_REG_CANINTE, &caninte);
 
 	// Set normal operation mode
 	uint8_t canctrl = (1 << 0) | (1 << 1) | (1 << 2);
-	can_write(CAN_REG_CANCTRL, &canctrl, 1);
+	can_write(CAN_REG_CANCTRL, &canctrl);
 }
 
 /* Can be used in polling*/
