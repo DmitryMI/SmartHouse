@@ -15,6 +15,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <avr/wdt.h>
+#include <avr/eeprom.h>
 
 #include "can_commands.h"
 
@@ -33,10 +34,8 @@
 #define SPI_CS_CAN	PB0
 #define SPI_CS_MCU	PB2
 
-#ifndef CAN_SID
-# warning "CAN_SID must be defined and unique"
-#define CAN_SID 0x7FE
-#endif
+uint16_t device_sid;
+
 // ******************
 
 #define CAN_REG_CANINTE			0x2B
@@ -245,7 +244,7 @@ void inline load_tx()
 	addr = addr << 8;
 	addr += addrl;
 	
-	if(addr != 0 && addr != CAN_SID)
+	if(addr != 0 && addr != device_sid)
 	{
 		return;
 	}
@@ -310,7 +309,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_load_tx0_buffer(device_sid, response, 8);
 		can_rts(CAN_RTS_TXB0);
 	}	
 }
@@ -389,6 +388,8 @@ int main(void)
 	// Disabling WDT from resetting the system
 	MCUSR = 0;
 	wdt_disable();
+	
+	device_sid = eeprom_read_word(0);
 	
 	// Initializing CAN
 	can_init();
