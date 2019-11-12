@@ -113,12 +113,23 @@ uint8_t inline spi_getc()
 	return SPDR;
 }
 
+void inline can_cmd(uint8_t command)
+{
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	spi_putc(command);
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
+
+void inline can_rts()
+{
+	uint8_t cmd = (1 << 7) | CAN_RTS_TXB0;		// 1000 0nnn
+	can_cmd(cmd);
+}
+
 void inline can_reset_controller()
 {
 	uint8_t cmd = (1 << 7) | (1 << 6);
-	SPI_PORT &= ~(1 << SPI_CS_CAN);	
-	spi_putc(cmd);
-	SPI_PORT |= (1 << SPI_CS_CAN);
+	can_cmd(cmd);
 }
 
 
@@ -215,17 +226,7 @@ void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-void inline can_rts(uint8_t txb_mask)
-{
-	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
 
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	
-	spi_putc(cmd);
-	
-	// Setting SS to high
-	SPI_PORT |= (1 << SPI_CS_CAN);
-}
 
 void inline load_tx()
 {
@@ -315,7 +316,7 @@ void inline load_tx()
 	if(mustRespond)
 	{
 		can_load_tx0_buffer(CAN_SID, response, 8);
-		can_rts(CAN_RTS_TXB0);
+		can_rts();
 	}	
 }
 
@@ -399,12 +400,8 @@ int main(void)
 	// Initializing CAN
 	can_init();
 	
-	// Using WDT as 2.0 seconds timer causing interrupt		
-	/*cli();
-	wdt_reset();
-	WDTCSR = ((1<<WDCE) | (1<<WDE));
-	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);*/
-	
+	// Using TIMER1 as 2.0 seconds timer causing interrupt		
+
 	TIMSK1 |= (1 << TOIE1);
 	TCCR1B |= (1 << CS12);
 	
