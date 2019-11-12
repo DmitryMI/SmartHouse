@@ -260,7 +260,8 @@ void inline load_tx()
 	
 	//uint8_t *data = package + CAN_OFFSET_DATA;
 	
-	uint8_t response[8] = {0};
+	//uint8_t response[8] = {0};
+	uint8_t response[8];
 		
 	int mustRespond = 1;
 	
@@ -284,11 +285,6 @@ void inline load_tx()
 	else if(comdh == CAN_CMD_RESET)
 	{
 		mustRespond = 0;
-		/*response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
-		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
-		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;*/
 		
 	}
 	else if(comdh == CAN_CMD_PROG_FLASH)
@@ -326,6 +322,11 @@ ISR(INT0_vect)
 	load_tx();
 }
 
+void wait100ms()
+{
+	_delay_ms(100);
+}
+
 void inline can_init()
 {
 	// Initializaing SPI
@@ -336,8 +337,8 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	//DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	//EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
 	sei();
 	
@@ -348,7 +349,7 @@ void inline can_init()
 	
 	
 	uint8_t caninte = 0;
-	_delay_ms(100);
+	wait100ms();
 	caninte = CAN_INT_RX0IE;
 	can_write(CAN_REG_CANINTE, &caninte, 1);
 
@@ -394,7 +395,6 @@ int main(void)
 	can_init();
 	
 	// Using TIMER1 as 2.0 seconds timer causing interrupt		
-
 	TIMSK1 |= (1 << TOIE1);
 	TCCR1B |= (1 << CS12);
 	
@@ -405,10 +405,6 @@ int main(void)
 	
     while (1) 
     {
-		//_delay_ms(100);
-		//LED_PORT ^= (1 << LED_PIN);
-		/*LED_PORT &= ~(1 << LED_PIN);
-		//_delay_ms(100);
-		LED_PORT |= (1 << LED_PIN);*/
+
     }
 }
