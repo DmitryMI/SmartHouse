@@ -96,7 +96,7 @@ void inline program_handle(uint8_t *package)
 	SREG = sreg;
 }
 
-void spi_putc(uint8_t b)
+void spi_putc(uint8_t b)				// INLINE increases size!
 {
 	SPDR = b;
 	while(!(SPSR & (1 << SPIF)));
