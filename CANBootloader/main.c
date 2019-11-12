@@ -311,10 +311,15 @@ void inline load_tx()
 
 ISR(INT0_vect)
 {		
-	DDRB |= (1 << PB1);
-	PORTB |= (1 << PB1);
-	
 	load_tx();
+}
+
+void wait100ms()
+{
+	for(int i = 0; i < F_CPU / 10; i++)
+	{
+		
+	}	
 }
 
 void inline can_init()
@@ -332,14 +337,10 @@ void inline can_init()
 	EIMSK |= (1 << INT0);						// Enabling INT0
 	sei();
 	
-	
 	// Configuring interrupt on CAN-controller
-	/*uint8_t caninte = CAN_INT_RX0IE;	
-	can_write(CAN_REG_CANINTE, &caninte, 1);*/
-	
-	
+
 	uint8_t caninte = 0;
-	_delay_ms(100);
+	wait100ms();
 	caninte = CAN_INT_RX0IE;
 	can_write(CAN_REG_CANINTE, &caninte, 1);
 
@@ -410,10 +411,8 @@ int main(void)
 	
     while (1) 
     {
-		_delay_ms(100);
-		LED_PORT ^= (1 << LED_PIN);
-		/*LED_PORT &= ~(1 << LED_PIN);
 		//_delay_ms(100);
-		LED_PORT |= (1 << LED_PIN);*/
+		wait100ms();
+		LED_PORT ^= (1 << LED_PIN);
     }
 }
