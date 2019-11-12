@@ -272,17 +272,11 @@ void inline load_tx()
 		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
 		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
 		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
-		
+		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;		
 	}
 	else if(comdh == CAN_CMD_RESET)
 	{
 		mustRespond = 0;
-		/*response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
-		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
-		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;*/
 		
 	}
 	else if(comdh == CAN_CMD_PROG_FLASH)
@@ -316,11 +310,7 @@ void inline load_tx()
 
 
 ISR(INT0_vect)
-{	
-	/*EIMSK &= ~(1 << INT0);
-	DDRB |= (1 << PB1);
-	PORTB |= (1 << PB1);*/
-	
+{		
 	DDRB |= (1 << PB1);
 	PORTB |= (1 << PB1);
 	
@@ -378,6 +368,18 @@ uint8_t inline can_read_status()
 	return status;
 }
 
+void inline read_sid_eeprom()
+{		
+	EEAR = 0;
+	EECR |= (1<<EERE);	
+	device_sid = EEDR;
+	
+	EEAR = 1;
+	EECR |= (1<<EERE);
+	
+	device_sid += EEDR << 8;	
+}
+
 
 int main(void)
 {
@@ -389,7 +391,9 @@ int main(void)
 	MCUSR = 0;
 	wdt_disable();
 	
-	device_sid = eeprom_read_word(0);
+	// INTERRUPTS MUST BE DISABLE BEFORE THIS LINE
+	//device_sid = eeprom_read_word(0);
+	read_sid_eeprom();
 	
 	// Initializing CAN
 	can_init();
