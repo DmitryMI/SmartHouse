@@ -59,9 +59,14 @@ void inline exit_bootloader()
 	asm("jmp 0");
 }
 
-ISR(WDT_vect)
+ISR(TIMER1_OVF_vect)
 {
 	exit_bootloader();
+}
+
+void inline timer_reset()
+{
+	TCNT1 = 0;
 }
 
 void inline program_handle(uint8_t *package)
@@ -225,7 +230,8 @@ void inline can_rts(uint8_t txb_mask)
 void inline load_tx()
 {
 	// CAN-data received
-	wdt_reset();
+	//wdt_reset();
+	timer_reset();
 	
 	// Reading data from CAN-controller
 	const int package_length = 13;
@@ -394,10 +400,14 @@ int main(void)
 	can_init();
 	
 	// Using WDT as 2.0 seconds timer causing interrupt		
-	cli();
+	/*cli();
 	wdt_reset();
 	WDTCSR = ((1<<WDCE) | (1<<WDE));
-	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);*/
+	
+	TIMSK1 |= (1 << TOIE1);
+	TCCR1B |= (1 << CS12);
+	
 	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
