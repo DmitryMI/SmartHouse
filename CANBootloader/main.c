@@ -40,8 +40,9 @@ uint16_t device_sid;
 
 // ******************
 
-#define PACKAGE_LENTH 13
-#define PACKAGE_LENTH_OUT 8
+
+#define PACKAGE_LENGTH 13
+#define PACKAGE_LENGTH_OUT 8
 
 #define CAN_REG_CANINTE			0x2B
 #define CAN_INT_RX0IE			(1 << 0)
@@ -56,6 +57,7 @@ uint16_t device_sid;
 
 uint32_t prog_page_address = 0;
 uint8_t prog_byte_address = 0;
+
 
 void inline exit_bootloader()
 {
@@ -107,6 +109,8 @@ void inline program_handle(uint8_t *package)
 	SREG = sreg;
 }
 
+//void spi_putc (uint8_t b) __attribute__((section(".atVectors"))) ;
+
 void spi_putc(uint8_t b)
 {
 	SPDR = b;
@@ -132,9 +136,9 @@ void inline can_reset_controller()
 	can_cmd(cmd);
 }
 
-void inline can_rts(uint8_t txb_mask)
+void inline can_rts()
 {
-	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
+	uint8_t cmd = (1 << 7) | CAN_RTS_TXB0;		// 1000 0nnn
 	can_cmd(cmd);
 }
 
@@ -182,7 +186,7 @@ void inline can_readrxb(uint8_t *data)
 	
 	spi_putc(cmd);
 	
-	for(int i = 0; i < PACKAGE_LENTH; i++)
+	for(int i = 0; i < PACKAGE_LENGTH; i++)
 	{
 		SPDR = 0xFF;
 		data[i] = spi_getc();
@@ -202,7 +206,7 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	spi_putc(cmd);
 	
 	// Filling SID
-	uint8_t sid = device_sid << 5;
+	uint16_t sid = device_sid << 5;
 	
 	// Sid 11 - 3
 	spi_putc(sid >> 8);
@@ -217,10 +221,10 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	spi_putc(0xFF);
 	
 	// Filling DLC
-	spi_putc(PACKAGE_LENTH_OUT);
+	spi_putc(PACKAGE_LENGTH_OUT);
 	
 	// Sending bytes
-	for(int i = 0; i < PACKAGE_LENTH_OUT; i++)
+	for(int i = 0; i < PACKAGE_LENGTH_OUT; i++)
 	{
 		spi_putc(data[i]);
 	}
@@ -238,7 +242,7 @@ void inline load_tx()
 	
 	// Reading data from CAN-controller
 	//const int package_length = 13;
-	uint8_t package[PACKAGE_LENTH];
+	uint8_t package[PACKAGE_LENGTH];
 	can_readrxb(package);
 	uint16_t sid = 0;
 	sid += package[0];
@@ -313,7 +317,7 @@ void inline load_tx()
 	if(mustRespond)
 	{
 		can_load_tx0_buffer(response);
-		can_rts(CAN_RTS_TXB0);
+		can_rts();
 	}	
 }
 
@@ -325,10 +329,13 @@ ISR(INT0_vect)
 
 void wait100ms()
 {
-	for(int i = 0; i < F_CPU / 10; i++)
+	/*uint32_t volatile i = 0;
+	for(; i < F_CPU / 10; i++)
 	{
 		
-	}	
+	}	*/
+	
+	_delay_ms(100);
 }
 
 void inline can_init()
@@ -342,7 +349,7 @@ void inline can_init()
 	
 	// Configuring interrupt on MCU
 	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	//EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
 		
 	// Configuring interrupt on CAN-controller
@@ -356,6 +363,7 @@ void inline can_init()
 	uint8_t canctrl = (1 << 0) | (1 << 1) | (1 << 2);
 	can_write(CAN_REG_CANCTRL, &canctrl);
 }
+
 
 void inline read_sid_eeprom()
 {		
@@ -398,11 +406,12 @@ int main(void)
 	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
+	LED_PORT ^= (1 << LED_PIN);
 	
     while (1) 
     {
 		//_delay_ms(100);
-		wait100ms();
-		LED_PORT ^= (1 << LED_PIN);
+		//wait100ms();
+		//LED_PORT ^= (1 << LED_PIN);
     }
 }
