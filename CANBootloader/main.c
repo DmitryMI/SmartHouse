@@ -22,8 +22,6 @@
 // ***CONFIGURABLE***
 #define BOOT_VERS	1
 
-#define RXB_MASK	0
-
 #define LED_PORT	PORTC
 #define LED_DDR		DDRC
 #define LED_PIN		PC5
@@ -36,13 +34,8 @@
 #define SPI_CS_CAN	PB0
 #define SPI_CS_MCU	PB2
 
-uint16_t device_sid;
-
+uint16_t CAN_SID;
 // ******************
-
-
-#define PACKAGE_LENGTH 13
-#define PACKAGE_LENGTH_OUT 8
 
 #define CAN_REG_CANINTE			0x2B
 #define CAN_INT_RX0IE			(1 << 0)
@@ -58,21 +51,15 @@ uint16_t device_sid;
 uint32_t prog_page_address = 0;
 uint8_t prog_byte_address = 0;
 
-
 void inline exit_bootloader()
 {
-	//MCUCR = (1 << IVCE);
-	//MCUCR = 0;
+	MCUCR = (1 << IVCE);
+	MCUCR = 0;
 	
 	asm("jmp 0");
 }
 
-void inline reset_exit_timer()
-{
-	TCNT1 = 0;
-}
-
-ISR(TIMER1_OVF_vect)
+ISR(WDT_vect)
 {
 	exit_bootloader();
 }
@@ -109,8 +96,6 @@ void inline program_handle(uint8_t *package)
 	SREG = sreg;
 }
 
-//void spi_putc (uint8_t b) __attribute__((section(".atVectors"))) ;
-
 void spi_putc(uint8_t b)
 {
 	SPDR = b;
@@ -123,23 +108,12 @@ uint8_t inline spi_getc()
 	return SPDR;
 }
 
-void inline can_cmd(uint8_t cmd)
-{
-	SPI_PORT &= ~(1 << SPI_CS_CAN);
-	spi_putc(cmd);
-	SPI_PORT |= (1 << SPI_CS_CAN);
-}
-
 void inline can_reset_controller()
 {
 	uint8_t cmd = (1 << 7) | (1 << 6);
-	can_cmd(cmd);
-}
-
-void inline can_rts()
-{
-	uint8_t cmd = (1 << 7) | CAN_RTS_TXB0;		// 1000 0nnn
-	can_cmd(cmd);
+	SPI_PORT &= ~(1 << SPI_CS_CAN);	
+	spi_putc(cmd);
+	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
 
@@ -161,7 +135,7 @@ int inline can_read(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	return data_length;
 }
 
-void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
+void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 {
 	uint8_t write_cmd = (1 << 1);
 	
@@ -170,32 +144,35 @@ void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
 	spi_putc(write_cmd);
 	spi_putc(reg_addr);
 	
-	//for(int i = 0; i < data_length; i++)
-	//{
-		spi_putc(data_buffer[0]);
-	//}
+	for(int i = 0; i < data_length; i++)
+	{
+		spi_putc(data_buffer[i]);
+	}
 	
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-void inline can_readrxb(uint8_t *data)
+int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 {
-	uint8_t cmd = (1 << 7) | (1 << 4) | RXB_MASK;		// 1001 0nn0
+	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1001 0nn0
 
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	
 	spi_putc(cmd);
 	
-	for(int i = 0; i < PACKAGE_LENGTH; i++)
+	for(int i = 0; i < data_length; i++)
 	{
 		SPDR = 0xFF;
 		data[i] = spi_getc();
 	}
-
+	
+	// Setting SS to high
 	SPI_PORT |= (1 << SPI_CS_CAN);
+	
+	return data_length;
 }
 
-void inline can_load_tx0_buffer(uint8_t *data)
+void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 {
 	uint8_t cmd = (1 << 6);
 	
@@ -206,7 +183,7 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	spi_putc(cmd);
 	
 	// Filling SID
-	uint16_t sid = device_sid << 5;
+	sid = sid << 5;
 	
 	// Sid 11 - 3
 	spi_putc(sid >> 8);
@@ -221,10 +198,10 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	spi_putc(0xFF);
 	
 	// Filling DLC
-	spi_putc(PACKAGE_LENGTH_OUT);
+	spi_putc(data_length);
 	
 	// Sending bytes
-	for(int i = 0; i < PACKAGE_LENGTH_OUT; i++)
+	for(int i = 0; i < data_length; i++)
 	{
 		spi_putc(data[i]);
 	}
@@ -233,7 +210,17 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
+void inline can_rts(uint8_t txb_mask)
+{
+	uint8_t cmd = (1 << 7) | txb_mask;		// 1000 0nnn
 
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	spi_putc(cmd);
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+}
 
 void inline load_tx()
 {
@@ -241,35 +228,32 @@ void inline load_tx()
 	wdt_reset();
 	
 	// Reading data from CAN-controller
-	//const int package_length = 13;
-	uint8_t package[PACKAGE_LENGTH];
-	can_readrxb(package);	
-
+	const int package_length = 13;
+	uint8_t package[package_length];
+	can_readrxb(0, package, package_length);
+	uint16_t sid = 0;
+	sid += package[0];
+	sid = sid << 3;
+	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
+	//uint8_t dlc = package[4];
+	
 	uint8_t addrh = package[CAN_OFFSET_ADDRH];
 	uint8_t addrl = package[CAN_OFFSET_ADDRL];
 	uint16_t addr = addrh;
 	addr = addr << 8;
 	addr += addrl;
 	
-	//uint16_t addr = (package[CAN_OFFSET_ADDRH] << 8) + package[CAN_OFFSET_ADDRL];
-	
-	if(addr != 0 && addr != device_sid)
+	if(addr != 0 && addr != CAN_SID)
 	{
 		return;
 	}
-	
-	uint16_t sid = 0;
-	sid += package[0];
-	sid = sid << 3;
-	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
 	
 	uint8_t comdh = package[CAN_OFFSET_COMDH];
 	uint8_t comdl = package[CAN_OFFSET_COMDL];
 	
 	//uint8_t *data = package + CAN_OFFSET_DATA;
 	
-	//uint8_t response[8] = {0};
-	uint8_t response[8];
+	uint8_t response[8] = {0};
 		
 	int mustRespond = 1;
 	
@@ -287,11 +271,17 @@ void inline load_tx()
 		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
 		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
 		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
-		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;		
+		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;
+		
 	}
 	else if(comdh == CAN_CMD_RESET)
 	{
 		mustRespond = 0;
+		/*response[CAN_OFFSET_COMDH - CAN_PAYLOAD_OFFSET] = CAN_CMD_ACK;
+		response[CAN_OFFSET_COMDL - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA - CAN_PAYLOAD_OFFSET] = PAGE_SIZE_BYTES;
+		response[CAN_OFFSET_DATA + 1  - CAN_PAYLOAD_OFFSET] = 0;
+		response[CAN_OFFSET_DATA + 2  - CAN_PAYLOAD_OFFSET] = 0;*/
 		
 	}
 	else if(comdh == CAN_CMD_PROG_FLASH)
@@ -318,20 +308,22 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(response);
-		can_rts();
+		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_rts(CAN_RTS_TXB0);
 	}	
 }
 
 
 ISR(INT0_vect)
-{		
+{	
+	/*EIMSK &= ~(1 << INT0);
+	DDRB |= (1 << PB1);
+	PORTB |= (1 << PB1);*/
+	
+	DDRB |= (1 << PB1);
+	PORTB |= (1 << PB1);
+	
 	load_tx();
-}
-
-void wait100ms()
-{
-	_delay_ms(100);
 }
 
 void inline can_init()
@@ -344,39 +336,47 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	//DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	//EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
+	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
-		
+	sei();
+	
+	
 	// Configuring interrupt on CAN-controller
-
-	wait100ms();
-	uint8_t caninte = CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte);
+	/*uint8_t caninte = CAN_INT_RX0IE;	
+	can_write(CAN_REG_CANINTE, &caninte, 1);*/
+	
+	
+	uint8_t caninte = 0;
+	_delay_ms(100);
+	caninte = CAN_INT_RX0IE;
+	can_write(CAN_REG_CANINTE, &caninte, 1);
 
 	// Set normal operation mode
 	uint8_t canctrl = (1 << 0) | (1 << 1) | (1 << 2);
-	can_write(CAN_REG_CANCTRL, &canctrl);
+	can_write(CAN_REG_CANCTRL, &canctrl, 1);
 }
 
-
-void inline read_sid_eeprom()
-{		
-	EEAR = 0;
-	EECR |= (1<<EERE);	
-	device_sid = EEDR;
-	
-	EEAR = 1;
-	EECR |= (1<<EERE);
-	
-	device_sid += EEDR << 8;	
-}
-
-void inline enable_timer()
+/* Can be used in polling*/
+uint8_t inline can_read_status()
 {
-	TIMSK1 |= (1 << TOIE1);
-	TCCR1B |= (1 << CS12);
+	uint8_t cmd = (1 << 7) | (1 << 5);		// 1010 0000
+	uint8_t status;
+
+	// Pulling CS low
+	SPI_PORT &= ~(1 << SPI_CS_CAN);
+	
+	spi_putc(cmd);
+	
+	SPDR = 0xFF;
+	status = spi_getc();
+	
+	// Setting SS to high
+	SPI_PORT |= (1 << SPI_CS_CAN);
+	
+	return status;
 }
+
 
 int main(void)
 {
@@ -388,25 +388,27 @@ int main(void)
 	MCUSR = 0;
 	wdt_disable();
 	
-	// INTERRUPTS MUST BE DISABLE BEFORE THIS LINE
-	//device_sid = eeprom_read_word(0);
-	read_sid_eeprom();
+	CAN_SID = eeprom_read_word(0);
 	
 	// Initializing CAN
 	can_init();
 	
-	// Using TIMER1 as 2.0 seconds timer causing interrupt		
-	enable_timer();
-	
+	// Using WDT as 2.0 seconds timer causing interrupt		
+	cli();
+	wdt_reset();
+	WDTCSR = ((1<<WDCE) | (1<<WDE));
+	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
 	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
-	LED_PORT ^= (1 << LED_PIN);
+	LED_PORT |= (1 << LED_PIN);
 	
     while (1) 
     {
+		_delay_ms(100);
+		LED_PORT ^= (1 << LED_PIN);
+		/*LED_PORT &= ~(1 << LED_PIN);
 		//_delay_ms(100);
-		//wait100ms();
-		//LED_PORT ^= (1 << LED_PIN);
+		LED_PORT |= (1 << LED_PIN);*/
     }
 }
