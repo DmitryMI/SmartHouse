@@ -22,6 +22,8 @@
 // ***CONFIGURABLE***
 #define BOOT_VERS	1
 
+#define RXB_MASK	0
+
 #define LED_PORT	PORTC
 #define LED_DDR		DDRC
 #define LED_PIN		PC5
@@ -37,6 +39,9 @@
 uint16_t device_sid;
 
 // ******************
+
+#define PACKAGE_LENTH 13
+#define PACKAGE_LENTH_OUT 8
 
 #define CAN_REG_CANINTE			0x2B
 #define CAN_INT_RX0IE			(1 << 0)
@@ -136,7 +141,7 @@ int inline can_read(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	return data_length;
 }
 
-void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
+void inline can_write(uint8_t reg_addr, uint8_t *data_buffer)
 {
 	uint8_t write_cmd = (1 << 1);
 	
@@ -145,35 +150,32 @@ void inline can_write(uint8_t reg_addr, uint8_t *data_buffer, int data_length)
 	spi_putc(write_cmd);
 	spi_putc(reg_addr);
 	
-	for(int i = 0; i < data_length; i++)
-	{
-		spi_putc(data_buffer[i]);
-	}
+	//for(int i = 0; i < data_length; i++)
+	//{
+		spi_putc(data_buffer[0]);
+	//}
 	
 	SPI_PORT |= (1 << SPI_CS_CAN);
 }
 
-int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
+void inline can_readrxb(uint8_t *data)
 {
-	uint8_t cmd = (1 << 7) | (1 << 4) | rxb_mask;		// 1001 0nn0
+	uint8_t cmd = (1 << 7) | (1 << 4) | RXB_MASK;		// 1001 0nn0
 
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	
 	spi_putc(cmd);
 	
-	for(int i = 0; i < data_length; i++)
+	for(int i = 0; i < PACKAGE_LENTH; i++)
 	{
 		SPDR = 0xFF;
 		data[i] = spi_getc();
 	}
-	
-	// Setting SS to high
+
 	SPI_PORT |= (1 << SPI_CS_CAN);
-	
-	return data_length;
 }
 
-void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
+void inline can_load_tx0_buffer(uint8_t *data)
 {
 	uint8_t cmd = (1 << 6);
 	
@@ -184,7 +186,7 @@ void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 	spi_putc(cmd);
 	
 	// Filling SID
-	sid = sid << 5;
+	uint8_t sid = device_sid << 5;
 	
 	// Sid 11 - 3
 	spi_putc(sid >> 8);
@@ -199,10 +201,10 @@ void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 	spi_putc(0xFF);
 	
 	// Filling DLC
-	spi_putc(data_length);
+	spi_putc(PACKAGE_LENTH_OUT);
 	
 	// Sending bytes
-	for(int i = 0; i < data_length; i++)
+	for(int i = 0; i < PACKAGE_LENTH_OUT; i++)
 	{
 		spi_putc(data[i]);
 	}
@@ -229,9 +231,9 @@ void inline load_tx()
 	wdt_reset();
 	
 	// Reading data from CAN-controller
-	const int package_length = 13;
-	uint8_t package[package_length];
-	can_readrxb(0, package, package_length);
+	//const int package_length = 13;
+	uint8_t package[PACKAGE_LENTH];
+	can_readrxb(package);
 	uint16_t sid = 0;
 	sid += package[0];
 	sid = sid << 3;
@@ -303,7 +305,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(device_sid, response, 8);
+		can_load_tx0_buffer(response);
 		can_rts(CAN_RTS_TXB0);
 	}	
 }
@@ -335,18 +337,17 @@ void inline can_init()
 	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
 	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
-	sei();
-	
+		
 	// Configuring interrupt on CAN-controller
 
 	uint8_t caninte = 0;
 	wait100ms();
 	caninte = CAN_INT_RX0IE;
-	can_write(CAN_REG_CANINTE, &caninte, 1);
+	can_write(CAN_REG_CANINTE, &caninte);
 
 	// Set normal operation mode
 	uint8_t canctrl = (1 << 0) | (1 << 1) | (1 << 2);
-	can_write(CAN_REG_CANCTRL, &canctrl, 1);
+	can_write(CAN_REG_CANCTRL, &canctrl);
 }
 
 /* Can be used in polling*/
@@ -400,14 +401,12 @@ int main(void)
 	can_init();
 	
 	// Using WDT as 2.0 seconds timer causing interrupt		
-	cli();
 	wdt_reset();
 	WDTCSR = ((1<<WDCE) | (1<<WDE));
 	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
 	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
-	LED_PORT |= (1 << LED_PIN);
 	
     while (1) 
     {
