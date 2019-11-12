@@ -188,7 +188,7 @@ int inline can_readrxb(uint8_t rxb_mask, uint8_t *data, int data_length)
 	return data_length;
 }
 
-void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
+void inline can_load_tx0_buffer(uint8_t *data, int data_length)
 {
 	uint8_t cmd = (1 << 6);
 	
@@ -199,7 +199,7 @@ void inline can_load_tx0_buffer(uint16_t sid, uint8_t *data, int data_length)
 	spi_putc(cmd);
 	
 	// Filling SID
-	sid = sid << 5;
+	uint8_t sid = CAN_SID << 5;
 	
 	// Sid 11 - 3
 	spi_putc(sid >> 8);
@@ -311,7 +311,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(CAN_SID, response, 8);
+		can_load_tx0_buffer(response, 8);
 		can_rts();
 	}	
 }
