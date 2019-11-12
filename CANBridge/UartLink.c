@@ -43,7 +43,7 @@ void ULink_init()
 {
 	unsigned int ubrr = F_CPU / 16 / BAUD - 1;
 	
-#if defined (__AVR_ATmega328P__)
+#if defined (__AVR_ATmega328p__)
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
 	/* Enable receiver and transmitter */
@@ -60,11 +60,12 @@ void ULink_init()
 	UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
 	
 	UCSRB |= (1 << RXCIE);	
+#else
+# warning Device is not supported
 #endif
 	
 	// Enabling interrupt
 	sei();
-	
 	
 }
 
@@ -164,4 +165,6 @@ ISR(USART_RXC_vect)
 	ULink_received_handler();
 }
 
+#else
+# warning Device is not supported
 #endif
