@@ -243,13 +243,16 @@ int main(void)
 		// Setting position of reset vectors table
 #if defined (__AVR_ATmega328p__)
 	MCUCR |= (1 << IVCE);
-	MCUCR |= (1 << IVSEL);
+	MCUCR = 0;
 #elif defined (__AVR_ATmega8__)
 	/* Enable change of Interrupt Vectors */
 	GICR = (1<<IVCE);
 	/* Move interrupts to main Flash section */
 	GICR = 0;
+#else
+	# warning Device not supported
 #endif
+
 	
 	device_sid = eeprom_read_word(0);
 	
