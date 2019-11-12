@@ -21,6 +21,28 @@
 
 uint32_t prog_page_address = 0;
 
+void inline reset_exit_timer()
+{
+	#if defined (__AVR_ATmega328P__)
+	wdt_reset();
+	#elif defined (__AVR_ATmega8__)
+	TCNT1 = 0;
+	#endif
+}
+
+void inline exit_bootloader()
+{
+	MCUCR = (1 << IVCE);
+	MCUCR = 0;
+	
+	#if defined (__AVR_ATmega328p__)
+	asm("jmp 0x0000");
+	#elif defined (__AVR_ATmega8__)
+	asm("rjmp app_start");
+	#endif
+}
+
+
 void program_page(uint32_t page_byte_addr, uint8_t *page_data)
 {
 	//cli();		// Disable interrupts.
@@ -51,10 +73,8 @@ void UART_init()
 	unsigned int ubrr = F_CPU / 16 / BAUD - 1;
 	
 	/*Set baud rate */
-<<<<<<< HEAD
-#if defined (__AVR_ATmega328p__)
-=======
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
+	
+	#if defined (__AVR_ATmega328p__)
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
 	
@@ -63,19 +83,37 @@ void UART_init()
 	
 	/* Set frame format: 8data, 2stop bit */
 	UCSR0C = (1<<USBS0)|(3<<UCSZ00);
+
+	#elif defined (__AVR_ATmega8__)
+	UBRRH = (unsigned char)(ubrr>>8);
+	UBRRL = (unsigned char)ubrr;
 	
-	// Enabling interrupt
-	//sei();
+	/* Enable receiver and transmitter */
+	UCSRB = (1<<RXEN)|(1<<TXEN);
 	
-	//UCSR0B |= (1 << RXCIE0);
+	/* Set frame format: 8data, 2stop bit */
+	UCSRC = (1<<USBS)|(3<<UCSZ0);
+
+	#else
+	# warning MCU not supported
+	#endif	
 }
 
 void UART_send_char(char singleChar)
 {
+	#if defined (__AVR_ATmega328p__)
 	while(!(UCSR0A & (1 << UDRE0)))
 	{
 	}
 	UDR0 = singleChar;
+	#elif defined (__AVR_ATmega8__)
+	while(!(UCSRA & (1 << UDRE)))
+	{
+	}
+	UDR = singleChar;
+	#else
+	# warning MCU not supported
+	#endif
 }
 
 void UART_send(char* str)
@@ -102,7 +140,6 @@ void UART_send_info(char* message)
 
 char UART_receive()
 {
-<<<<<<< HEAD
 #if defined (__AVR_ATmega328P__)
 	while ( !(UCSR0A & (1<<RXC)) );	
 	return UDR0;
@@ -110,11 +147,6 @@ char UART_receive()
 	while ( !(UCSRA & (1<<RXC)) );	
 	return UDR;
 #endif
-=======
-	while ( !(UCSR0A & (1<<RXC0)) );
-	wdt_reset();
-	return UDR0;
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
 }
 
 void prog_handler()
@@ -130,7 +162,7 @@ void prog_handler()
 		A[i] = UART_receive();				
 	}
 	
-	reset_timer();
+	reset_exit_timer();
 	
 	
 	program_page(prog_page_address, A);
@@ -169,9 +201,9 @@ void resolveUartCommand(char ch)
 	}
 	
 	if(ch == 'X')
-<<<<<<< HEAD
-	{		
+	{
 		
+	
 #if defined (__AVR_ATmega328p__)
 		UART_send_info("X command received!\n");
 		asm("jmp 0x0000");
@@ -179,35 +211,33 @@ void resolveUartCommand(char ch)
 		UART_send_info("X command received!\n");
 		asm("rjmp app_start");
 #endif
-=======
-	{
-		UART_send_info("X command received!\n");
-		asm("jmp 0x0000");
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
+
 	}
 }
 
+
+
+#if defined (__AVR_ATmega328p__)
 ISR(WDT_vect)
 {
 	asm("jmp 0");
 }
+#elif defined (__AVR_ATmega8__)
+ISR(TIMER1_OVF_vect)
+{
+	exit_bootloader();
+}
+#else
+# warning "MCU not supported!"
+#endif
 
-int main(void)
-{	
-	// Setting position of reset vectors table
-	MCUCR |= (1 << IVCE);
-	MCUCR |= (1 << IVSEL);
-	
-	// Disabling WDT from resetting the system
-	MCUSR = 0;
-	wdt_disable();
-	
-<<<<<<< HEAD
-#if defined (__AVR_ATmega328p__)
-=======
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
+
+void setup_timer()
+{
+	#if defined (__AVR_ATmega328p__)
+
 	// Using WDT as 2.0 seconds timer causing interrupt
-	
+
 	cli();
 	wdt_reset();
 	/* Start timed  sequence */
@@ -215,18 +245,19 @@ int main(void)
 	/* Set new prescaler(time-out) value = 64K cycles (~0.5 s) */
 	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
 	sei();
-<<<<<<< HEAD
-	
-#elif defined (__AVR_ATmega8__)
+
+	#elif defined (__AVR_ATmega8__)
 	TIMSK |= (1 << TOIE1);
 	sei();
 	//enable interrupts
 	//TCCR1B |= (1 << CS11) | (1 << CS10);
 	TCCR1B |= (1 << CS12);
 	// set prescaler to 256 and start the timer
-	
-	
-#endif
+
+	#else
+	# warning "MCU not supported!"
+
+	#endif
 }
 
 int main(void)
@@ -240,39 +271,22 @@ int main(void)
 	GICR = (1 << IVSEL);	// |= currently is flashed to Atmega8 #1!
 #endif
 	
-	// Disabling WDT from resetting the system
-#if defined (__AVR_ATmega328p__)
 	MCUSR = 0;
-#elif defined (__AVR_ATmega8__)
-	MCUCSR = 0;
-#endif
 
-	wdt_disable();	
+	reset_exit_timer();	
 
 	setup_timer();		
-=======
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
 
 	UART_init();
 
-	DDRC |= (1 << 5);
-	
-<<<<<<< HEAD
+	DDRC |= (1 << 5);	
 	PORTC |= (1 << 5);	
-=======
-	PORTC |= (1 << 5);
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
 
 	while(1)
 	{	
 		char ch = UART_receive();
 		
-<<<<<<< HEAD
-		reset_timer();
-=======
-		// Communication in progress
-		wdt_reset();
->>>>>>> parent of 5ae90d7... Atmega8 compability implemented
+		reset_exit_timer();
 		
 #if defined (__AVR_ATmega328p__)
 		PINC |= (1 << 5);
@@ -285,6 +299,8 @@ int main(void)
 		{
 			PORTC |= (1 << 5);
 		}
+#else
+# warning MCU not supported
 #endif	
 		
 		resolveUartCommand(ch);		
