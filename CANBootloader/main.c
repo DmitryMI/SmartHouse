@@ -117,13 +117,13 @@ void spi_putc(uint8_t b)
 	while(!(SPSR & (1 << SPIF)));
 }
 
-uint8_t spi_getc()
+uint8_t inline spi_getc()
 {
 	while(!(SPSR & (1<<SPIF)));
 	return SPDR;
 }
 
-void can_cmd(uint8_t cmd)
+void inline can_cmd(uint8_t cmd)
 {
 	SPI_PORT &= ~(1 << SPI_CS_CAN);
 	spi_putc(cmd);
@@ -243,23 +243,25 @@ void inline load_tx()
 	// Reading data from CAN-controller
 	//const int package_length = 13;
 	uint8_t package[PACKAGE_LENGTH];
-	can_readrxb(package);
-	uint16_t sid = 0;
-	sid += package[0];
-	sid = sid << 3;
-	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
-	//uint8_t dlc = package[4];
-	
+	can_readrxb(package);	
+
 	uint8_t addrh = package[CAN_OFFSET_ADDRH];
 	uint8_t addrl = package[CAN_OFFSET_ADDRL];
 	uint16_t addr = addrh;
 	addr = addr << 8;
 	addr += addrl;
 	
+	//uint16_t addr = (package[CAN_OFFSET_ADDRH] << 8) + package[CAN_OFFSET_ADDRL];
+	
 	if(addr != 0 && addr != device_sid)
 	{
 		return;
 	}
+	
+	uint16_t sid = 0;
+	sid += package[0];
+	sid = sid << 3;
+	sid += (package[1] & ((1 << 7) | (1 << 6) | (1 << 5))) >> 5;
 	
 	uint8_t comdh = package[CAN_OFFSET_COMDH];
 	uint8_t comdl = package[CAN_OFFSET_COMDL];
@@ -329,12 +331,6 @@ ISR(INT0_vect)
 
 void wait100ms()
 {
-	/*uint32_t volatile i = 0;
-	for(; i < F_CPU / 10; i++)
-	{
-		
-	}	*/
-	
 	_delay_ms(100);
 }
 
@@ -348,15 +344,14 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
+	//DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
 	//EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
 		
 	// Configuring interrupt on CAN-controller
 
-	uint8_t caninte = 0;
 	wait100ms();
-	caninte = CAN_INT_RX0IE;
+	uint8_t caninte = CAN_INT_RX0IE;
 	can_write(CAN_REG_CANINTE, &caninte);
 
 	// Set normal operation mode
