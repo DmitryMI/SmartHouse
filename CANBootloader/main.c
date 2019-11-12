@@ -5,16 +5,9 @@
  * Author : Dmitry
  */ 
 
-/*
-Boot sector address:
-					ATmega8:	-Wl,-Ttext=0x1C00
-					ATmega328p:	-Wl,-Ttext=0x7C00
-
-*/
-
 #include <avr/io.h>
 
-#define F_CPU 1000000UL
+#define F_CPU 8000000UL
 
 #include <util/delay.h>
 #include <avr/boot.h>
@@ -22,7 +15,6 @@ Boot sector address:
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <avr/wdt.h>
-#include <avr/eeprom.h>
 
 #include "can_commands.h"
 
@@ -41,6 +33,10 @@ Boot sector address:
 #define SPI_CS_CAN	PB0
 #define SPI_CS_MCU	PB2
 
+#ifndef CAN_SID
+# warning "CAN_SID must be defined and unique"
+#define CAN_SID 0x7FE
+#endif
 // ******************
 
 #define CAN_REG_CANINTE			0x2B
@@ -54,8 +50,6 @@ Boot sector address:
 
 #define PAGE_SIZE_BYTES SPM_PAGESIZE
 
-uint16_t can_sid;
-
 uint32_t prog_page_address = 0;
 uint8_t prog_byte_address = 0;
 
@@ -64,20 +58,13 @@ void inline exit_bootloader()
 	MCUCR = (1 << IVCE);
 	MCUCR = 0;
 	
-	asm("rjmp app_start");
+	asm("jmp 0");
 }
 
-ISR(TIMER1_OVF_vect)
-{
-	exit_bootloader();
-}
-
-#if defined (__AVR_ATmega328P__)
 ISR(WDT_vect)
 {
 	exit_bootloader();
 }
-#endif
 
 void inline program_handle(uint8_t *package)
 {
@@ -258,7 +245,7 @@ void inline load_tx()
 	addr = addr << 8;
 	addr += addrl;
 	
-	if(addr != 0 && addr != can_sid)
+	if(addr != 0 && addr != CAN_SID)
 	{
 		return;
 	}
@@ -323,7 +310,7 @@ void inline load_tx()
 	
 	if(mustRespond)
 	{
-		can_load_tx0_buffer(can_sid, response, 8);
+		can_load_tx0_buffer(CAN_SID, response, 8);
 		can_rts(CAN_RTS_TXB0);
 	}	
 }
@@ -350,19 +337,11 @@ void inline can_init()
 
 	can_reset_controller();
 	
-	
-#if defined (__AVR_ATmega328P__)
 	// Configuring interrupt on MCU
 	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
 	EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
 	EIMSK |= (1 << INT0);						// Enabling INT0
 	sei();
-#elif (__AVR_ATmega8__)
-	DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-	MCUCR &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
-	GICR |= (1 << INT0);						// Enabling INT0
-	sei();
-#endif
 	
 	
 	// Configuring interrupt on CAN-controller
@@ -400,25 +379,6 @@ uint8_t inline can_read_status()
 	return status;
 }
 
-void inline init_boot_exit_timer()
-{
-#if defined (__AVR_ATmega328P__)
-	// Using WDT as 2.0 seconds timer causing interrupt
-	cli();
-	wdt_reset();
-	WDTCSR = ((1<<WDCE) | (1<<WDE));
-	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
-	sei();
-#elif (__AVR_ATmega8__)
-	TIMSK |= (1 << TOIE1);
-	sei();
-	//enable interrupts
-	//TCCR1B |= (1 << CS11) | (1 << CS10);
-	TCCR1B |= (1 << CS12);
-	// set prescaler to 256 and start the timer
-#endif
-}
-
 
 int main(void)
 {
@@ -430,12 +390,15 @@ int main(void)
 	MCUSR = 0;
 	wdt_disable();
 	
-	can_sid = eeprom_read_word(0);
-	
 	// Initializing CAN
 	can_init();
 	
-	init_boot_exit_timer();
+	// Using WDT as 2.0 seconds timer causing interrupt		
+	cli();
+	wdt_reset();
+	WDTCSR = ((1<<WDCE) | (1<<WDE));
+	WDTCSR = ((1<<WDIE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0)) & ~(1 << WDE);
+	sei();
 	
 	LED_DDR |= (1 << LED_PIN);	
 	LED_PORT |= (1 << LED_PIN);
@@ -449,4 +412,3 @@ int main(void)
 		LED_PORT |= (1 << LED_PIN);*/
     }
 }
-
