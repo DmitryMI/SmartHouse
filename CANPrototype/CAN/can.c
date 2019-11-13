@@ -6,6 +6,7 @@
  */ 
 
 #include "can.h"
+#include "../DeviceConfig.h"
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -254,10 +255,9 @@ void can_init(uint8_t flags)
 	
 	if(flags & CAN_MCU_INT_EN)
 	{
-		// Configuring interrupt on MCU
-		DDRD &= ~(1 << PD2);						// Setting	INT0 pin to input
-		EICRA &= ~(1 << ISC00) & ~(1 << ISC01);		// Low level INT0
-		EIMSK |= (1 << INT0);						// Enabling INT0
+		// Configuring interrupt on MCU		
+		//EIMSK |= (1 << INT0);						// Enabling INT0
+		INT0_ENABLE;
 		sei();
 		
 		// Configuring interrupt on CAN-controller

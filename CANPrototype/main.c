@@ -7,6 +7,8 @@
 
 #include "DeviceConfig.h" 
 
+
+
 #include <avr/io.h>
 #include <avr/wdt.h>
 #include <util/delay.h>
@@ -15,11 +17,14 @@
 #include <avr/eeprom.h>
 
 
-#include "UartLink.h"
+//#include "UartLink.h"
 #include "CAN/can.h"
 #include "can_commands.h"
 
 #define CAN_FIRM_VERS		1
+
+// Device specific configs
+
 
 #define LED_PORT		PORTC
 #define LED_PIN			PC5
@@ -41,7 +46,7 @@ void reset_handler()
 	} while(0);
 }
 
-void print_binary(char ch)
+/*void print_binary(char ch)
 {
 	for(int i = 0; i < 8; i++)
 	{
@@ -61,9 +66,9 @@ void print_binary(char ch)
 		
 		ch = ch << 1;
 	}
-}
+}*/
 
-void print_16(uint16_t ch)
+/*void print_16(uint16_t ch)
 {
 	for(int i = 0; i < 16; i++)
 	{
@@ -83,9 +88,9 @@ void print_16(uint16_t ch)
 		
 		ch = ch << 1;
 	}
-}
+}*/
 
-void received_handler(char ch)
+/*void received_handler(char ch)
 {
 	if(ch == 'S')
 	{
@@ -135,14 +140,14 @@ void received_handler(char ch)
 		
 		ULink_send_info("TX initiated. Wait for interrupt!\n");
 	}
-}
+}*/
 
-void uart_log(char* message)
+/*void uart_log(char* message)
 {
 	ULink_send_info(message);
 	while(!(UCSR0A & (1 << UDRE0)));
 	UDR0 = '\n';
-}
+}*/
 
 void do_blink()
 {
@@ -154,7 +159,7 @@ void do_blink()
 
 void enable_power_reduction()
 {
-	ADCSRA &= ~(ADEN);	// Turning off ADC
+	/*ADCSRA &= ~(ADEN);	// Turning off ADC
 	
 	PRR =
 	(1 << PRTWI)	|	// Disabling IIC
@@ -162,7 +167,7 @@ void enable_power_reduction()
 	(1 << PRTIM0)	|	// Disabling Timer0
 	(1 << PRTIM1)	|	// Disabling Timer1
 	//(1 << PRSPI)	|	// Disabling SPI
-	(1 << PRADC);		// Disabling ADC
+	(1 << PRADC);		// Disabling ADC*/
 }
 
 ISR(INT0_vect)
@@ -240,30 +245,19 @@ int main(void)
 	MCUSR = 0;
 	wdt_disable();
 	
-		// Setting position of reset vectors table
-#if defined (__AVR_ATmega328p__)
-	MCUCR |= (1 << IVCE);
-	MCUCR = 0;
-#elif defined (__AVR_ATmega8__)
-	/* Enable change of Interrupt Vectors */
-	GICR = (1<<IVCE);
-	/* Move interrupts to main Flash section */
-	GICR = 0;
-#else
-	# warning Device not supported
-#endif
-
+	// Setting position of reset vectors table
+	RESET_VECTORS;
 	
 	device_sid = eeprom_read_word(0);
 	
 	//enable_power_reduction();
 	
-	ULink_set_received_handler(received_handler);
+	/*ULink_set_received_handler(received_handler);
 	ULink_set_reset_request_handler(reset_handler);
-	ULink_init();
+	ULink_init();*/
 	
 	// Can initialization
-	can_set_logger(uart_log);
+	//can_set_logger(uart_log);
 	can_set_callback(can_data_received);
 	can_init(CAN_MCU_INT_EN);
 	
