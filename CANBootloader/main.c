@@ -37,6 +37,43 @@
 uint16_t CAN_SID;
 // ******************
 
+// Device specific configs
+#if defined (__AVR_ATmega328P__)
+
+#define INT0_ENABLE		EIMSK |= (1 << INT0);
+
+#define TIMER_ENABLE	TIMSK1 |= (1 << TOIE1); \
+						TCCR1B |= (1 << CS12);
+						
+#define EXIT_BOOT		asm("jmp 0");
+
+#define SET_VECTORS		MCUCR = (1 << IVCE);	\
+						MCUCR = (1 << IVSEL);
+						
+#define RESET_VECTORS	MCUCR = (1 << IVCE);	\
+						MCUCR = 0;
+						
+#elif defined (__AVR_ATmega8__)
+
+#define INT0_ENABLE		GICR |= (1 << INT0);
+
+#define TIMER_ENABLE	TIMSK |= (1 << TOIE1); \
+						TCCR1B |= (1 << CS12);
+						
+#define EXIT_BOOT		asm("rjmp app_start");
+
+#define SET_VECTORS		GICR = (1 << IVCE);	\
+						GICR = (1 << IVSEL);
+
+#define RESET_VECTORS	GICR = (1 << IVCE);	\
+						GICR = 0;
+
+#else
+# warning Device not supported
+#endif
+
+
+
 #define PACKAGE_SIZE_IN		13
 #define PACKAGE_SIZE_OUT	8
 
@@ -56,10 +93,9 @@ uint8_t prog_byte_address = 0;
 
 void inline exit_bootloader()
 {
-	MCUCR = (1 << IVCE);
-	MCUCR = 0;
+	RESET_VECTORS;
 	
-	asm("jmp 0");
+	EXIT_BOOT;
 }
 
 ISR(TIMER1_OVF_vect)
@@ -176,7 +212,7 @@ void inline can_load_tx0_buffer(uint8_t *data)
 	spi_putc(cmd);
 	
 	// Filling SID
-	uint8_t sid = CAN_SID << 5;
+	uint16_t sid = CAN_SID << 5;
 	
 	// Sid 11 - 3
 	spi_putc(sid >> 8);
@@ -315,7 +351,7 @@ void inline can_init()
 	can_reset_controller();
 	
 	// Configuring interrupt on MCU
-	EIMSK |= (1 << INT0);						// Enabling INT0
+	INT0_ENABLE;
 
 	wait100ms();
 	uint8_t caninte = CAN_INT_RX0IE;
@@ -329,8 +365,7 @@ void inline can_init()
 int main(void)
 {
 	// Setting position of reset vectors table
-	MCUCR = (1 << IVCE);
-	MCUCR = (1 << IVSEL);
+	SET_VECTORS;
 	
 	// Disabling WDT from resetting the system
 	MCUSR = 0;
@@ -342,8 +377,7 @@ int main(void)
 	can_init();
 	
 	// Using TIMER1 as 2.0 seconds timer causing interrupt		
-	TIMSK1 |= (1 << TOIE1);
-	TCCR1B |= (1 << CS12);
+	TIMER_ENABLE;
 	
 	sei();
 	
