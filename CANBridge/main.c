@@ -171,6 +171,8 @@ void  inline enable_power_reduction()
 	(1 << PRADC);		// Disabling ADC
 #elif defined (__AVR_ATmega8__)
 	// TODO Power reduction on Atmega8
+#else
+# warning Device is not supported
 #endif
 }
 
@@ -222,11 +224,13 @@ int main(void)
 	
 	// Setting position of reset vectors table
 	#if defined (__AVR_ATmega328p__)
-	MCUCR |= (1 << IVCE);
-	MCUCR &= ~(1 << IVSEL);
+	//MCUCR |= (1 << IVCE);
+	//MCUCR &= ~(1 << IVSEL);
 	#elif defined (__AVR_ATmega8__)
-	GICR |= (1 << IVCE);
-	GICR &= ~(1 << IVSEL);
+	//GICR |= (1 << IVCE);
+	//GICR &= ~(1 << IVSEL);
+	#else
+	# warning Device is not supported
 	#endif
 	
 	MCUSR = 0;

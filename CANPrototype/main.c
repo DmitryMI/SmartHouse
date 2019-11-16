@@ -16,14 +16,10 @@
 #include <stdlib.h>
 #include <avr/eeprom.h>
 
-
-//#include "UartLink.h"
 #include "CAN/can.h"
 #include "can_commands.h"
 
 #define CAN_FIRM_VERS		1
-
-// Device specific configs
 
 
 #define LED_PORT		PORTC
@@ -46,108 +42,6 @@ void reset_handler()
 	} while(0);
 }
 
-/*void print_binary(char ch)
-{
-	for(int i = 0; i < 8; i++)
-	{
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-			
-		}
-		
-		if(ch & (1 << 7))
-		{
-			UDR0 = '1';
-		}
-		else
-		{
-			UDR0 = '0';
-		}
-		
-		ch = ch << 1;
-	}
-}*/
-
-/*void print_16(uint16_t ch)
-{
-	for(int i = 0; i < 16; i++)
-	{
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-			
-		}
-		
-		if(ch & (1 << 15))
-		{
-			UDR0 = '1';
-		}
-		else
-		{
-			UDR0 = '0';
-		}
-		
-		ch = ch << 1;
-	}
-}*/
-
-/*void received_handler(char ch)
-{
-	if(ch == 'S')
-	{
-		ULink_send_info("No sleep mode :<\n");
-	}
-	else if(ch == 'T')
-	{
-		ULink_send_info("Can testing command received\n");
-		uint8_t status = can_read_status();
-				
-		ULink_send_info("Status reading finished\n");
-		ULink_send_info("");
-		print_binary(status);
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-			
-		}
-		UDR0 = '\n';		
-		
-		uint8_t canctrl;
-		can_read(CAN_REG_CANCTRL, &canctrl, 1);
-		ULink_send_info("CANCTRL register: ");
-		print_binary(canctrl);
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-			
-		}
-		UDR0 = '\n';
-	}
-	else if('F')
-	{
-		ULink_send_info("Testing CAN message sending and receiving. SID: \n");
-		
-		uint8_t data[] = {'a', 'b', 'c', 'd', 'e', 'f'};
-		
-		uint16_t sid = 551UL;
-		
-		print_16(sid);
-		while(!(UCSR0A & (1 << UDRE0)))
-		{
-			
-		}
-		UDR0 = '\n';
-		
-		can_load_tx0_buffer(sid, data, 6);
-		can_rts(CAN_RTS_TXB0);
-		
-		ULink_send_info("TX initiated. Wait for interrupt!\n");
-	}
-}*/
-
-/*void uart_log(char* message)
-{
-	ULink_send_info(message);
-	while(!(UCSR0A & (1 << UDRE0)));
-	UDR0 = '\n';
-}*/
 
 void do_blink()
 {
@@ -194,9 +88,7 @@ void inline can_resolve(uint16_t sid, uint8_t *package)
 	
 	uint8_t comdh = package[CAN_OFFSET_COMDH];
 	uint8_t comdl = package[CAN_OFFSET_COMDL];
-	
-	//uint8_t *data = package + CAN_OFFSET_DATA;
-	
+		
 	uint8_t response[8] = {0};
 	
 	int mustRespond = 1;
@@ -248,21 +140,10 @@ int main(void)
 	// Setting position of reset vectors table
 	RESET_VECTORS;
 	
-	device_sid = eeprom_read_word(0);
-	
-	//enable_power_reduction();
-	
-	/*ULink_set_received_handler(received_handler);
-	ULink_set_reset_request_handler(reset_handler);
-	ULink_init();*/
-	
-	// Can initialization
-	//can_set_logger(uart_log);
+	device_sid = eeprom_read_word(0);	
+
 	can_set_callback(can_data_received);
 	can_init(CAN_MCU_INT_EN);
-	
-	// Set loopback mode
-	//set_loopback_mode();
 		
     while (1) 
     {
