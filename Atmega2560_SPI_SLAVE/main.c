@@ -5,7 +5,7 @@
  * Author : Dmitry
  */ 
 
-#define F_CPU 16000000UL
+#define F_CPU 8000000UL
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -18,11 +18,84 @@
 #define DD_SCK		PB1
 #define DD_SS		PB0
 
-#define PORT_LEDS	PORTA
-#define DDR_LEDS	DDRA
-#define DD_PIN0		PA0
-#define DD_PIN1		PA1
-#define DD_PIN2		PA2
+#define PORT_LEDS	PORTC
+#define DDR_LEDS	DDRC
+#define DD_PIN0		PC5
+
+void send_Uart(unsigned char c)//	Отправка байта
+{
+	while(!(UCSRA&(1 <<UDRE)))	//	Устанавливается, когда регистр свободен
+	{}
+	UDR = c;
+}
+
+void send_int_Uart(unsigned int c)//	Отправка числа от 0000 до 9999
+{
+	unsigned char temp;
+	c=c%10000;
+	temp=c/100;
+	send_Uart(temp/10+'0');
+	send_Uart(temp%10+'0');
+	temp=c%100;;
+	send_Uart(temp/10+'0');
+	send_Uart(temp%10+'0');
+}
+
+unsigned char getch_Uart(void)//	Получение байта
+{
+	while(!(UCSRA&(1<<RXC)))	//	Устанавливается, когда регистр свободен
+	{}
+	return UDR;
+}
+
+void send_Uart_str(unsigned char *s)//	Отправка строки
+{
+	while (*s != 0) send_Uart(*s++);
+}
+
+
+int init_UART(void)
+{
+	//	Установка скорости 9600
+	UBRRH=0;	//	UBRR=f/(16*band)-1 f=8000000Гц band=9600,
+	UBRRL=51;	//	нормальный асинхронный двунаправленный режим работы
+	
+	//			RXC			-	завершение приёма
+	//			|TXC		-	завершение передачи
+	//			||UDRE 		-	отсутствие данных для отправки
+	//			|||FE		-	ошибка кадра
+	//			||||DOR		-	ошибка переполнение буфера
+	//			|||||PE		-	ошибка чётности
+	//			||||||U2X	-	Двойная скорость
+	//			|||||||MPCM	-	Многопроцессорный режим
+	//			76543210
+	UCSRA=0b00000000;
+
+	//			RXCIE		-	прерывание при приёме данных
+	//			|TXCIE		-	прерывание при завершение передачи
+	//			||UDRIE		-	прерывание отсутствие данных для отправки
+	//			|||RXEN		-	разрешение приёма
+	//			||||TXEN	-	разрешение передачи
+	//			|||||UCSZ2	-	UCSZ0:2 размер кадра данных
+	//			||||||RXB8	-	9 бит принятых данных
+	//			|||||||TXB8	-	9 бит переданных данных
+	//			76543210
+	UCSRB=0b00011000;	//	разрешен приём и передача по UART
+
+	//			URSEL		-	всегда 1
+	//			|UMSEL		-	режим:1-синхронный 0-асинхронный
+	//			||UPM1		-	UPM0:1 чётность
+	//			|||UPM0		-	UPM0:1 чётность
+	//			||||USBS	-	топ биты: 0-1, 1-2
+	//			|||||UCSZ1	-	UCSZ0:2 размер кадра данных
+	//			||||||UCSZ0	-	UCSZ0:2 размер кадра данных
+	//			|||||||UCPOL-	в синхронном режиме - тактирование
+	//			76543210
+	UCSRC=0b10000110;	//	8-битовая посылка
+}
+
+
+
 
 void SPI_SlaveInit(void)
 {
@@ -35,45 +108,24 @@ void SPI_SlaveInit(void)
 ISR(SPI_STC_vect)
 {
 	char cData = SPDR;
-	
-	if(cData == '0')
-	{
-		PORT_LEDS |= (1 << DD_PIN0);
-		PORT_LEDS &= ~(1 << DD_PIN1);
-		PORT_LEDS &= ~(1 << DD_PIN2);
-	}
-	else if(cData == '1')
-	{
-		PORT_LEDS &= ~(1 << DD_PIN0);
-		PORT_LEDS |= (1 << DD_PIN1);
-		PORT_LEDS &= ~(1 << DD_PIN2);
-	}
-	else if(cData == '2')
-	{
-		PORT_LEDS &= ~(1 << DD_PIN0);
-		PORT_LEDS &= ~(1 << DD_PIN1);
-		PORT_LEDS |= (1 << DD_PIN2);
-	}
-	else
-	{
-		PORT_LEDS &= ~(1 << DD_PIN0);
-		PORT_LEDS &= ~(1 << DD_PIN1);
-		PORT_LEDS &= ~(1 << DD_PIN2);
-	}
+	send_Uart(cData);
+	SPDR = 0x41;
 }
+
 
 int main(void)
 {
-    DDR_LEDS = (1 << DD_PIN0) | (1 << DD_PIN1) | (1 << DD_PIN2);
-	PORT_LEDS |= (1 << DD_PIN0) | (1 << DD_PIN1) | (1 << DD_PIN2);
-	_delay_ms(2000);
-	
-	PORT_LEDS &= ~(1 << DD_PIN0) & ~(1 << DD_PIN1) & ~(1 << DD_PIN2);
+    DDR_LEDS = (1 << DD_PIN0);
+	PORT_LEDS |= (1 << DD_PIN0);	
+	PORT_LEDS &= ~(1 << DD_PIN0);
 	
 	SPI_SlaveInit();
 	
+	init_UART();
+	
     while (1) 
     {
+
     }
 }
 

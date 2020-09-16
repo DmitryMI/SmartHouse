@@ -7,10 +7,17 @@
 
 // BDBDBDBE
 
+// For Atmega8 bootloader: -Wl,-Ttext=0x1C00,--defsym=app_start=0
+
 #include <avr/io.h>
 
-#define F_CPU 8000000UL
-#include "DeviceConfig.h"
+#define F_CPU 16000000UL
+
+#define BAUD		9600
+#define DEV_NAME	"Atmega8p"
+#define FIRM_VERS	"2.0"
+
+#define ACK			"ACK"
 
 #include <util/delay.h>
 #include <avr/boot.h>
@@ -70,13 +77,13 @@ void program_page(uint32_t page_byte_addr, uint8_t *page_data)
 
 void UART_init()
 {
-	unsigned int ubrr = F_CPU / 16 / BAUD - 1;
+	uint16_t ubrr = F_CPU / 16 / BAUD - 1;
 	
 	/*Set baud rate */
 	
 	#if defined (__AVR_ATmega328p__)
-	UBRR0H = (unsigned char)(ubrr>>8);
-	UBRR0L = (unsigned char)ubrr;
+	UBRR0H = (ubrr>>8);
+	UBRR0L = ubrr;
 	
 	/* Enable receiver and transmitter */
 	UCSR0B = (1<<RXEN0)|(1<<TXEN0);
@@ -85,14 +92,15 @@ void UART_init()
 	UCSR0C = (1<<USBS0)|(3<<UCSZ00);
 
 	#elif defined (__AVR_ATmega8__)
-	UBRRH = (unsigned char)(ubrr>>8);
-	UBRRL = (unsigned char)ubrr;
+	UBRRH = (ubrr>>8);
+	UBRRL = ubrr;
 	
 	/* Enable receiver and transmitter */
 	UCSRB = (1<<RXEN)|(1<<TXEN);
 	
 	/* Set frame format: 8data, 2stop bit */
-	UCSRC = (1<<USBS)|(3<<UCSZ0);
+	//UCSRC = (1<<USBS)|(3<<UCSZ0);
+	UCSRC = (1<<URSEL)|(1<<UCSZ1)|(1<<UCSZ0); //8 bit, 1 stop bit
 
 	#else
 	# warning MCU not supported
@@ -247,17 +255,38 @@ void setup_timer()
 	sei();
 
 	#elif defined (__AVR_ATmega8__)
-	TIMSK |= (1 << TOIE1);
+	TIMSK |= (1 << TOIE1);	
+	//TCCR1B |= (1 << CS11) | (1 << CS10);
+	//TCCR1B |= (1 << CS12);				// 256
+	TCCR1B |= (1 << CS12) | (1 << CS10);	// 1024
+	// set prescaler to 256 and start the timer
+	
 	sei();
 	//enable interrupts
-	//TCCR1B |= (1 << CS11) | (1 << CS10);
-	TCCR1B |= (1 << CS12);
-	// set prescaler to 256 and start the timer
 
 	#else
 	# warning "MCU not supported!"
 
 	#endif
+}
+
+void lifesign()
+{
+	DDRC |= (1 << 5);
+	
+	UART_send_info("Hello!");
+	for(int i = 0; i < 6; i++)
+	{
+		if(PORTC & (1 << 5))
+		{
+			PORTC &= ~(1 << 5);
+		}
+		else
+		{
+			PORTC |= (1 << 5);
+		}
+		_delay_ms(250);
+	}	
 }
 
 int main(void)
@@ -271,16 +300,18 @@ int main(void)
 	GICR = (1 << IVSEL);	// |= currently is flashed to Atmega8 #1!
 #endif
 	
-	MCUSR = 0;
-
-	reset_exit_timer();	
-
-	setup_timer();		
-
+	//MCUSR = 0;
+	
 	UART_init();
+	
+	reset_exit_timer();	
+	
+	//lifesign();		
+
+	setup_timer();			
 
 	DDRC |= (1 << 5);	
-	PORTC |= (1 << 5);	
+	PORTC |= (1 << 5);		
 
 	while(1)
 	{	

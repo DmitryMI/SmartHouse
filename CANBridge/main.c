@@ -151,8 +151,9 @@ void uart_received_handler(char ch)
 
 void do_blink()
 {
+	LED_DDR |= (1 << LED_PIN);
 	LED_PORT |= (1 << LED_PIN);
-	_delay_ms(50);
+	_delay_ms(100);
 	LED_PORT &= ~(1 << LED_PIN);
 	_delay_ms(2000);
 }

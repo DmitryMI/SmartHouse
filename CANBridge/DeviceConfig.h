@@ -9,7 +9,7 @@
 #ifndef DEVICECONFIG_H_
 #define DEVICECONFIG_H_
 
-#define F_CPU		8000000UL
+#define F_CPU		16000000UL
 #define DEV_NAME	"CANBridge"
 #define FIRM_VERS	"1.0.0"
 #define CAN_SID		1

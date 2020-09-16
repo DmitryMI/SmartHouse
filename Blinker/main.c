@@ -13,8 +13,7 @@
 
 int main(void)
 {
-	DDRC |= (1 << PC5);
-	
+	DDRC |= (1 << PC5);	
 
     while (1) 
     {
